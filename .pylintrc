@@ -1,0 +1,5 @@
+; .pylintrc
+
+[MASTER]
+
+disable = C0116
