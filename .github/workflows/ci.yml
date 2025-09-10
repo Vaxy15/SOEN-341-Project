@@ -33,4 +33,4 @@ jobs:
       - name: Run pylint
         # Fail the job if score drops under 9.5 (tune as you like)
         run: |
-          pylint src tests --fail-under=9.5
+          pylint src --fail-under=10
