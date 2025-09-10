@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "soen341_project"
+version = "0.1.0"
+description = "SOEN 341 school project"
+authors = [
+    { name = "Anthony Vaccaro" }
+]
+readme = "README.md"
+requires-python = ">=3.10"
+
+# Runtime dependencies (if your code needs numpy, pandas, etc.)
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pylint"
+]
