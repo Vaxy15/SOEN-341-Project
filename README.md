@@ -22,3 +22,5 @@ Project for **SOEN 341 – Software Process** at Concordia University.
 4. Linting & Style
    ```bash
    pylint src
+
+Anthony Vaccaro 40214876
