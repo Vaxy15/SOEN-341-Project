@@ -22,3 +22,6 @@ Project for **SOEN 341 – Software Process** at Concordia University.
 4. Linting & Style
    ```bash
    pylint src
+
+   Students:
+   Adam Othmani 40287816
