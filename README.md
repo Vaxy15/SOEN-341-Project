@@ -23,4 +23,8 @@ Project for **SOEN 341 – Software Process** at Concordia University.
    ```bash
    pylint src
 
-Abderrahmane Bensassi-Nour 40317017
+
+ Students:
+   Adam Othmani 40287816
+   Souméya Diop 40197160 
+   Abderrahmane Bensassi-Nour 40317017
