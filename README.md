@@ -22,3 +22,7 @@ Project for **SOEN 341 – Software Process** at Concordia University.
 4. Linting & Style
    ```bash
    pylint src
+
+Team members:
+
+Souméya Diop 40197160 
