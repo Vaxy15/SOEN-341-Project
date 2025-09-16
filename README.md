@@ -4,11 +4,12 @@ Project for **SOEN 341 – Software Process** at Concordia University.
 
 ---
 ### Students:
+   Mountaga Sy  40312584  
    Adam Othmani 40287816  
    Souméya Diop 40197160  (soumeyadiop)
    Abderrahmane Bensassi-Nour 40317017  
    Anthony Vaccaro 40214876  
-   Mountaga Sy 40312584
+   
 
 ## ⚙️ Setting Up for Development
 
