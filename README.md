@@ -33,3 +33,4 @@ Project for **SOEN 341 – Software Process** at Concordia University.
    ```bash
    pylint src
 
+5. Testing for approvers
