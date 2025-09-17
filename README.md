@@ -34,3 +34,11 @@ Project for **SOEN 341 – Software Process** at Concordia University.
    pylint src
 
 5. Testing for approvers
+
+### Project Description
+
+We are building a Campus Events & Ticketing Web App that helps students discover, manage, and attend campus activities. 
+Students functionalities: browse and save events, get free or paid tickets, and check in with QR codes. 
+Event organizers functionalities: create and manage events, track attendance, and view analytics through dashboards.
+Administrators functionalitites: moderate content and supervise organizations (for example student clubs).
+The platform simplifies event management, boosts student engagement, and delivers insights to both organizers and campus administration.
