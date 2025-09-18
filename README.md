@@ -4,15 +4,80 @@ Project for **SOEN 341 – Software Process** at Concordia University.
 
 ---
 ### Students:
-   Mountaga Sy  40312584 @mountagv7
-   Adam Othmani 40287816 @64NG
-   Souméya Diop 40197160  (soumeyadiop)  
-   Abderrahmane Bensassi-Nour 40317017  @Abderrahmane102
-   Anthony Vaccaro 40214876 @Vaxy15
-   Anthony Mastromonaco 40077240 @Anthony-Mastro
-   Mahdi Rahman 40282926 @MahdiRahman4
+
+| Name                       | ID       | GitHub Handle    |
+|----------------------------|----------|------------------|
+| Mountaga Sy                | 40312584 | @mountagv7       |
+| Adam Othmani               | 40287816 | @64NG            |
+| Souméya Diop               | 40197160 | @soumeyadiop     |
+| Abderrahmane Bensassi-Nour | 40317017 | @Abderrahmane102 |
+| Anthony Vaccaro            | 40214876 | @Vaxy15          |
+| Anthony Mastromonaco       | 40077240 | @Anthony-Mastro  |
+| Mahdi Rahman               | 40282926 | @MahdiRahman4    |
 
    
+# 🎓 Campus Events & Ticketing Web Application
+## Description
+A web platform designed to help students **discover, organize, and attend events on campus**.  
+The system enables students to browse upcoming events, claim digital tickets, and check in via QR codes.  
+Organizers can create and manage events, track attendance, and export attendee data, while administrators oversee moderation and analytics.  
+
+
+---
+
+## Objectives
+- Build a **central hub** for students to explore and attend campus events.
+- Provide organizers with tools to **create, promote, and manage** events efficiently.
+- Give administrators oversight through **moderation and analytics dashboards**.
+- Encourage **student engagement** and simplify ticketing with digital QR-based check-ins.
+
+---
+
+## Core Features
+
+### Student Event Experience
+- **Event Discovery**  
+  - Browse and search events with filters (date, category, organization).  
+- **Event Management**  
+  - Save events to a personal calendar.  
+  - Claim free or mock-paid tickets.  
+  - Receive a **digital ticket with a unique QR code**.  
+
+### Organizer Event Management
+- **Event Creation**  
+  - Add event details: title, description, date/time, location, ticket capacity, and type (free or paid).  
+- **Event Analytics**  
+  - Per-event dashboard: tickets issued, attendance rates, remaining capacity.  
+- **Tools**  
+  - Export attendee lists to CSV.  
+  - Integrated **QR scanner** for ticket validation (via upload or camera).  
+
+### Administrator Dashboard & Moderation
+- **Platform Oversight**  
+  - Approve organizer accounts.  
+  - Moderate event listings for policy compliance.  
+- **Analytics**  
+  - View global stats: number of events, tickets issued, participation trends.  
+- **Management**  
+  - Manage organizations and assign roles.  
+
+### Additional Feature (to be proposed)
+Alongside the core features, one additional feature will be designed in consultation with the TA. Examples include:
+- **Waitlists** for sold-out events.  
+- **Calendar sync** with Google/Apple Calendar.  
+
+---
+
+## Tech Stack (planned)
+- **Backend:** Python (Django + Django REST Framework / FastAPI)  
+- **Frontend:** React  
+- **Database:** PostgreSQL  
+- **Authentication:** Django Auth 
+- **QR Codes:** Python `qrcode` library + browser QR scanner  
+- **Deployment:** Docker, Gunicorn, Nginx, PostgreSQL, S3 for storage  
+
+
+---
 
 ## ⚙️ Setting Up for Development
 
@@ -34,11 +99,3 @@ Project for **SOEN 341 – Software Process** at Concordia University.
    pylint src
 
 5. Testing for approvers
-
-### Project Description
-
-We are building a Campus Events & Ticketing Web App that helps students discover, manage, and attend campus activities. 
-Students functionalities: browse and save events, get free or paid tickets, and check in with QR codes. 
-Event organizers functionalities: create and manage events, track attendance, and view analytics through dashboards.
-Administrators functionalitites: moderate content and supervise organizations (for example student clubs).
-The platform simplifies event management, boosts student engagement, and delivers insights to both organizers and campus administration.
