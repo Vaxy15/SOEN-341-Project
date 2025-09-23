@@ -1,5 +1,16 @@
-; .pylintrc
-
 [MASTER]
+# Ignore auto-generated Django migrations
+ignore = migrations
 
-disable = C0116
+[MESSAGES CONTROL]
+# Temporarily quiet common boilerplate warnings while bootstrapping
+disable =
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring
+
+[FORMAT]
+max-line-length = 200
+
+[REPORTS]
+output-format = text
