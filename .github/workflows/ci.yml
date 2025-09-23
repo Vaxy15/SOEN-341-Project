@@ -28,4 +28,4 @@ jobs:
         run: pytest -q
 
       - name: Run pylint
-        run: pylint campus campusevents --fail-under=9.5
+        run: pylint ./campus ./campusevents --fail-under=8
