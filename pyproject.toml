@@ -20,3 +20,6 @@ dev = [
     "pytest",
     "pylint"
 ]
+
+[tool.setuptools]
+packages = ["campus", "campusevents"]
