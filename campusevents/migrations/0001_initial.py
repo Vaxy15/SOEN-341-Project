@@ -3,6 +3,8 @@
 import campusevents.models
 import django.contrib.auth.validators
 import django.utils.timezone
+import django.db.models.deletion
+from django.conf import settings
 from django.db import migrations, models
 
 
@@ -47,6 +49,32 @@ class Migration(migrations.Migration):
             },
             managers=[
                 ('objects', campusevents.models.CustomUserManager()),
+            ],
+        ),
+        migrations.CreateModel(
+            name='Organization',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('name', models.CharField(max_length=120)),
+                ('description', models.TextField(blank=True)),
+                ('approved', models.BooleanField(default=False)),
+            ],
+        ),
+        migrations.CreateModel(
+            name='Event',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('title', models.CharField(max_length=160)),
+                ('description', models.TextField()),
+                ('category', models.CharField(blank=True, max_length=80)),
+                ('location', models.CharField(max_length=160)),
+                ('start_at', models.DateTimeField()),
+                ('end_at', models.DateTimeField()),
+                ('capacity', models.PositiveIntegerField(default=0)),
+                ('ticket_type', models.CharField(choices=[('free', 'Free'), ('paid', 'Paid')], default='free', max_length=10)),
+                ('status', models.CharField(choices=[('draft', 'Draft'), ('pending', 'Pending'), ('approved', 'Approved'), ('rejected', 'Rejected')], default='pending', max_length=10)),
+                ('created_by', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='campusevents.user')),
+                ('org', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='campusevents.organization')),
             ],
         ),
     ]

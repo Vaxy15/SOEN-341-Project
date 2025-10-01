@@ -85,17 +85,46 @@ Alongside the core features, one additional feature will be designed in consulta
    ```bash
    git clone https://github.com/<your-username>/SOEN-341-Project.git
    cd SOEN-341-Project
+   ```
 
-2. Install dependencies
+2. **Create and activate a virtual environment**  
+   Windows (PowerShell): 
    ```bash
-   pip install -e .[dev]
-
-3. Running Tests
+   py -m venv venv
+   venv\Scripts\Activate.ps1
+   ```
+   If you get a script execution error:
+   ```bash 
+   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+   venv\Scripts\Activate.ps1
+   ```
+   macOS/Linux:
    ```bash
-   pytest -q
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
 
-4. Linting & Style
+3. **Install dependencies**
    ```bash
-   pylint src
-
-5. Testing for approvers
+   pip install -r requirements.txt
+   ```
+   If requirements.txt does not exist yet:
+   ```bash
+   pip install django django-filter pillow qrcode
+   pip freeze > requirements.txt
+   ```
+4. **Apply database migrations**   
+   ```bash
+   python manage.py migrate
+   ```
+5. **Create a superuser (admin account for django)**
+   ```bash
+   python manage.py createsuperuser
+   ```
+6. **Run the development server**
+   ```bash
+   Run the development server
+   ```
+   Open your browser:  
+   Home page --> [http://127.0.0.1:8000/](http://127.0.0.1:8000/)  
+   Admin loging page --> [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/)
