@@ -17,6 +17,50 @@ Project for **SOEN 341 – Software Process** at Concordia University.
 
    
 # 🎓 Campus Events & Ticketing Web Application
+
+## 🔧 Environment Setup
+
+### 1. Clone the repository
+```bash
+git clone <repository-url>
+cd SOEN-341-Project-1
+```
+
+### 2. Create virtual environment
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+### 3. Install dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Environment Variables
+Copy the example environment file and configure your settings:
+```bash
+cp env.example .env
+```
+
+Edit `.env` file with your settings:
+```env
+SECRET_KEY=your-secret-key-here
+DEBUG=True
+ALLOWED_HOSTS=127.0.0.1,localhost
+```
+
+### 5. Database Setup
+```bash
+python manage.py migrate
+python manage.py createsuperuser
+```
+
+### 6. Run Development Server
+```bash
+python manage.py runserver
+```
+
 ## Description
 A web platform designed to help students **discover, organize, and attend events on campus**.  
 The system enables students to browse upcoming events, claim digital tickets, and check in via QR codes.  
