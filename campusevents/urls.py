@@ -3,7 +3,7 @@ from . import views
 
 urlpatterns = [
     path("", views.home, name="home"),
-    
+
     # API endpoints
     path('api/profile/', views.UserProfileView.as_view(), name='user_profile'),
     path('api/register/', views.UserRegistrationView.as_view(), name='user_registration'),
