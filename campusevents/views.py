@@ -1,4 +1,6 @@
-from django.http import HttpResponse
+from django.shortcuts import render
+from .models import Event
 
-def home(_request):
-    return HttpResponse("Campus Events app is working ✅")
+def home(request):
+    events = Event.objects.all()
+    return render(request, "home.html", {"events": events})
