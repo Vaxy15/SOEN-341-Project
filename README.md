@@ -8,7 +8,7 @@ Project for **SOEN 341 – Software Process** at Concordia University.
 | Name                       | ID       | GitHub Handle    |
 |----------------------------|----------|------------------|
 | Mountaga Sy                | 40312584 | @mountagv7       |
-| Adam Othmani               | 40287816 | @64NG            |
+| Adam Othmani               | 40287816 | @adamo03         |
 | Souméya Diop               | 40197160 | @soumeyadiop     |
 | Abderrahmane Bensassi-Nour | 40317017 | @Abderrahmane102 |
 | Anthony Vaccaro            | 40214876 | @Vaxy15          |

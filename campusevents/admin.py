@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, Organization, Event
+from .models import User, Organization, Event, Ticket
 
 
 @admin.register(User)
@@ -67,5 +67,19 @@ class EventAdmin(admin.ModelAdmin):
     readonly_fields = ("stats",)
 
     def stats(self, obj):
-        # placeholder until tickets exist
         return f"Remaining capacity: {obj.remaining_capacity}"
+
+
+@admin.register(Ticket)
+class TicketAdmin(admin.ModelAdmin):
+    list_display = ("ticket_id", "event", "user", "status", "issued_at")
+    list_filter = ("status", "event", "issued_at")
+    search_fields = ("ticket_id", "user__email", "event__title")
+    readonly_fields = ("ticket_id", "qr_code_data", "issued_at", "used_at")
+    
+    fieldsets = (
+        (None, {"fields": ("ticket_id", "event", "user", "status")}),
+        ("QR Code", {"fields": ("qr_code", "qr_code_data")}),
+        ("Timestamps", {"fields": ("issued_at", "used_at", "expires_at")}),
+        ("Additional", {"fields": ("seat_number", "notes")}),
+    )

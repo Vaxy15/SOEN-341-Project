@@ -1,8 +1,14 @@
 """Django models for organizations and events."""
 
+import qrcode
+import io
+import json
+import uuid
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.core.files.base import ContentFile
+from django.utils import timezone
 
 
 class CustomUserManager(BaseUserManager):
@@ -125,3 +131,135 @@ class Event(models.Model):
         if hasattr(self, "tickets"):
             issued = self.tickets.filter(status="issued").count()
         return max(0, self.capacity - issued)
+
+
+class Ticket(models.Model):
+    """Ticket model for event attendance with QR code generation."""
+    
+    ISSUED = "issued"
+    USED = "used"
+    CANCELLED = "cancelled"
+    EXPIRED = "expired"
+    
+    STATUS_CHOICES = [
+        (ISSUED, "Issued"),
+        (USED, "Used"),
+        (CANCELLED, "Cancelled"),
+        (EXPIRED, "Expired"),
+    ]
+    
+    # Relationships
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="tickets")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="tickets")
+    
+    # Ticket details
+    ticket_id = models.CharField(max_length=50, unique=True, db_index=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=ISSUED)
+    
+    # QR Code
+    qr_code = models.ImageField(upload_to="qr_codes/", blank=True, null=True)
+    qr_code_data = models.TextField(blank=True)  # Store QR code data for validation
+    
+    # Timestamps
+    issued_at = models.DateTimeField(auto_now_add=True)
+    used_at = models.DateTimeField(blank=True, null=True)
+    expires_at = models.DateTimeField(blank=True, null=True)
+    
+    # Additional fields
+    seat_number = models.CharField(max_length=20, blank=True)
+    notes = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ["-issued_at"]
+        unique_together = ["event", "user"]  # One ticket per user per event
+    
+    def __str__(self) -> str:
+        return f"Ticket {self.ticket_id} for {self.event.title}"
+    
+    def save(self, *args, **kwargs):
+        """Generate ticket ID and QR code on save."""
+        if not self.ticket_id:
+            # Generate unique ticket ID
+            self.ticket_id = f"TKT-{uuid.uuid4().hex[:12].upper()}"
+        
+        # Generate QR code data
+        if not self.qr_code_data:
+            self.qr_code_data = self.generate_qr_data()
+        
+        # Generate QR code image
+        if not self.qr_code:
+            self.generate_qr_code()
+        
+        super().save(*args, **kwargs)
+    
+    def generate_qr_data(self) -> str:
+        """Generate QR code data string."""
+        data = {
+            "ticket_id": self.ticket_id,
+            "event_id": self.event.id,
+            "user_id": self.user.id,
+            "event_title": self.event.title,
+            "user_name": f"{self.user.first_name} {self.user.last_name}",
+            "issued_at": self.issued_at.isoformat(),
+        }
+        return json.dumps(data)
+    
+    def generate_qr_code(self):
+        """Generate QR code image and save to qr_code field."""
+        if not self.qr_code_data:
+            return
+        
+        # Create QR code
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(self.qr_code_data)
+        qr.make(fit=True)
+        
+        # Create image
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Convert to bytes
+        buffer = io.BytesIO()
+        img.save(buffer, format='PNG')
+        buffer.seek(0)
+        
+        # Save to model
+        filename = f"ticket_{self.ticket_id}.png"
+        self.qr_code.save(
+            filename,
+            ContentFile(buffer.getvalue()),
+            save=False
+        )
+    
+    def is_valid(self) -> bool:
+        """Check if ticket is valid for use."""
+        return (
+            self.status == self.ISSUED and
+            (not self.expires_at or self.expires_at > timezone.now()) and
+            self.event.status == Event.APPROVED
+        )
+    
+    def use_ticket(self):
+        """Mark ticket as used."""
+        if self.is_valid():
+            self.status = self.USED
+            self.used_at = timezone.now()
+            self.save()
+            return True
+        return False
+    
+    def cancel_ticket(self):
+        """Cancel the ticket."""
+        self.status = self.CANCELLED
+        self.save()
+    
+    @property
+    def qr_code_url(self) -> str:
+        """Get QR code URL for API responses."""
+        if self.qr_code:
+            return self.qr_code.url
+        return None
