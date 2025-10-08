@@ -11,4 +11,10 @@ urlpatterns = [
     path('api/events/', views.EventListView.as_view(), name='event_list'),
     path('api/events/<int:pk>/', views.EventDetailView.as_view(), name='event_detail'),
     path('api/logout/', views.logout_view, name='logout'),
+    
+    # Ticket endpoints
+    path('api/tickets/issue/', views.TicketIssueView.as_view(), name='ticket_issue'),
+    path('api/tickets/validate/', views.TicketValidationView.as_view(), name='ticket_validate'),
+    path('api/tickets/my-tickets/', views.MyTicketsView.as_view(), name='my_tickets'),
+    path('api/tickets/<int:pk>/', views.TicketDetailView.as_view(), name='ticket_detail'),
 ]

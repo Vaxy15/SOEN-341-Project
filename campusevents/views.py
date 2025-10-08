@@ -12,8 +12,11 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.shortcuts import render
-from .models import Organization, Event
-from .serializers import CustomTokenObtainPairSerializer, UserSerializer, OrganizationSerializer, EventSerializer
+from .models import Organization, Event, Ticket
+from .serializers import (
+    CustomTokenObtainPairSerializer, UserSerializer, OrganizationSerializer, 
+    EventSerializer, TicketSerializer, TicketIssueSerializer, TicketValidationSerializer
+)
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     """Custom JWT token view that includes user role information."""
@@ -185,3 +188,146 @@ def logout_view(request):
         return Response({'error': 'Refresh token is required'}, status=status.HTTP_400_BAD_REQUEST)
     except Exception:
         return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TicketIssueView(APIView):
+    """View to issue tickets for events."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """Issue a ticket for an event."""
+        serializer = TicketIssueSerializer(data=request.data)
+        if serializer.is_valid():
+            event_id = serializer.validated_data['event_id']
+            event = Event.objects.get(id=event_id)
+            
+            # Check if user already has a ticket for this event
+            existing_ticket = Ticket.objects.filter(event=event, user=request.user).first()
+            if existing_ticket:
+                return Response(
+                    {'error': 'You already have a ticket for this event'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Create ticket
+            ticket_data = {
+                'event': event,
+                'user': request.user,
+                'seat_number': serializer.validated_data.get('seat_number', ''),
+                'notes': serializer.validated_data.get('notes', ''),
+                'expires_at': serializer.validated_data.get('expires_at'),
+            }
+            
+            ticket = Ticket.objects.create(**ticket_data)
+            ticket_serializer = TicketSerializer(ticket)
+            
+            return Response(ticket_serializer.data, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TicketValidationView(APIView):
+    """View to validate tickets."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """Validate a ticket by ticket ID."""
+        serializer = TicketValidationSerializer(data=request.data)
+        if serializer.is_valid():
+            ticket_id = serializer.validated_data['ticket_id']
+            
+            try:
+                ticket = Ticket.objects.get(ticket_id=ticket_id)
+                
+                # Check if user has permission to validate (organizer or admin)
+                if not (request.user.role in ['organizer', 'admin'] or ticket.event.created_by == request.user):
+                    return Response(
+                        {'error': 'You do not have permission to validate this ticket'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                
+                # Validate ticket
+                is_valid = ticket.is_valid()
+                if is_valid:
+                    # Mark ticket as used
+                    ticket.use_ticket()
+                    return Response({
+                        'valid': True,
+                        'ticket': TicketSerializer(ticket).data,
+                        'message': 'Ticket validated and marked as used'
+                    }, status=status.HTTP_200_OK)
+                else:
+                    return Response({
+                        'valid': False,
+                        'ticket': TicketSerializer(ticket).data,
+                        'message': 'Ticket is not valid (expired, cancelled, or event not approved)'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                    
+            except Ticket.DoesNotExist:
+                return Response(
+                    {'error': 'Ticket not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class MyTicketsView(APIView):
+    """View to get user's tickets."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get all tickets for the current user."""
+        tickets = Ticket.objects.filter(user=request.user).order_by('-issued_at')
+        serializer = TicketSerializer(tickets, many=True)
+        return Response(serializer.data)
+
+
+class TicketDetailView(APIView):
+    """View to get, update, or cancel a specific ticket."""
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk):
+        """Helper to get ticket object."""
+        try:
+            return Ticket.objects.get(pk=pk)
+        except Ticket.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        """Get ticket details."""
+        ticket = self.get_object(pk)
+        if ticket is None:
+            return Response({'error': 'Ticket not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check if user owns the ticket or is admin/organizer
+        if not (ticket.user == request.user or request.user.role in ['admin', 'organizer']):
+            return Response(
+                {'error': 'You do not have permission to view this ticket'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = TicketSerializer(ticket)
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        """Cancel a ticket (only ticket owner or admin)."""
+        ticket = self.get_object(pk)
+        if ticket is None:
+            return Response({'error': 'Ticket not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check if user owns the ticket or is admin
+        if not (ticket.user == request.user or request.user.role == 'admin'):
+            return Response(
+                {'error': 'You do not have permission to cancel this ticket'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if ticket.status == Ticket.USED:
+            return Response(
+                {'error': 'Cannot cancel a ticket that has already been used'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        ticket.cancel_ticket()
+        return Response({'message': 'Ticket cancelled successfully'}, status=status.HTTP_200_OK)
