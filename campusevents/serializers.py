@@ -4,7 +4,7 @@ Serializers for the campusevents app.
 
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .models import User, Organization, Event
+from .models import User, Organization, Event, Ticket
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -86,3 +86,56 @@ class EventSerializer(serializers.ModelSerializer):
             'created_by_name'
         ]
         read_only_fields = ['id', 'created_by']
+
+
+class TicketSerializer(serializers.ModelSerializer):
+    """Serializer for Ticket model."""
+    
+    event_title = serializers.CharField(source='event.title', read_only=True)
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    qr_code_url = serializers.ReadOnlyField()
+    is_valid = serializers.ReadOnlyField()
+    
+    class Meta:
+        model = Ticket
+        fields = [
+            'id', 'ticket_id', 'event', 'event_title', 'user', 'user_name',
+            'status', 'qr_code', 'qr_code_url', 'qr_code_data', 'issued_at',
+            'used_at', 'expires_at', 'seat_number', 'notes', 'is_valid'
+        ]
+        read_only_fields = ['id', 'ticket_id', 'qr_code', 'qr_code_data', 'issued_at', 'used_at']
+
+
+class TicketIssueSerializer(serializers.Serializer):
+    """Serializer for issuing tickets."""
+    
+    event_id = serializers.IntegerField()
+    seat_number = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    notes = serializers.CharField(required=False, allow_blank=True)
+    expires_at = serializers.DateTimeField(required=False)
+    
+    def validate_event_id(self, value):
+        """Validate that the event exists and is approved."""
+        try:
+            event = Event.objects.get(id=value)
+            if event.status != Event.APPROVED:
+                raise serializers.ValidationError("Event is not approved for ticket issuance.")
+            if event.remaining_capacity <= 0:
+                raise serializers.ValidationError("Event is at full capacity.")
+            return value
+        except Event.DoesNotExist:
+            raise serializers.ValidationError("Event does not exist.")
+
+
+class TicketValidationSerializer(serializers.Serializer):
+    """Serializer for validating tickets."""
+    
+    ticket_id = serializers.CharField(max_length=50)
+    
+    def validate_ticket_id(self, value):
+        """Validate that the ticket exists."""
+        try:
+            ticket = Ticket.objects.get(ticket_id=value)
+            return value
+        except Ticket.DoesNotExist:
+            raise serializers.ValidationError("Ticket does not exist.")
