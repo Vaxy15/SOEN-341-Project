@@ -1,3 +1,4 @@
+
 """
 Views for the campusevents app.
 """
@@ -10,20 +11,16 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
-
+from django.shortcuts import render
 from .models import Organization, Event
 from .serializers import CustomTokenObtainPairSerializer, UserSerializer, OrganizationSerializer, EventSerializer
-
-
-def home(_request):
-    """Basic home view."""
-    return HttpResponse("Campus Events app is working ✅")
-
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     """Custom JWT token view that includes user role information."""
     serializer_class = CustomTokenObtainPairSerializer
-
+def home(request):
+    events = Event.objects.all()
+    return render(request, "home.html", {"events": events})
 
 class UserProfileView(APIView):
     """View to get and update user profile."""
