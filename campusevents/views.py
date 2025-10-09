@@ -21,7 +21,7 @@ from .models import Organization, Event, Ticket
 from .serializers import (
     CustomTokenObtainPairSerializer, UserSerializer, StudentRegistrationSerializer, 
     OrganizerRegistrationSerializer, OrganizationSerializer, EventSerializer, 
-    TicketSerializer, TicketIssueSerializer, TicketValidationSerializer
+    EventCreateSerializer, TicketSerializer, TicketIssueSerializer, TicketValidationSerializer
 )
 
 class EventPagination(PageNumberPagination):
@@ -199,10 +199,24 @@ class EventListView(APIView):  # pylint: disable=no-member
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        serializer = EventSerializer(data=request.data)
+        # Determine event status based on request data
+        event_status = request.data.get('status', Event.PENDING)
+        
+        # Validate status choice
+        if event_status not in [Event.DRAFT, Event.PENDING]:
+            return Response(
+                {'error': 'Event status must be either "draft" or "pending"'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = EventCreateSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(created_by=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            # Set the status and created_by
+            event = serializer.save(created_by=request.user, status=event_status)
+            
+            # Return the event with full details
+            response_serializer = EventSerializer(event)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -264,6 +278,65 @@ class EventDiscoveryView(APIView):
         # Fallback if pagination is not used
         serializer = EventSerializer(events, many=True)
         return Response(serializer.data)
+
+
+class OrganizerEventManagementView(APIView):
+    """View for organizers to manage their events including drafts."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get organizer's events including drafts."""
+        if not request.user.role in ['organizer', 'admin']:
+            return Response(
+                {'error': 'Only organizers and administrators can manage events'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get events created by the current user
+        events = Event.objects.filter(created_by=request.user).order_by('-created_at')
+        
+        # Apply status filter if provided
+        status_filter = request.query_params.get('status', None)
+        if status_filter:
+            events = events.filter(status=status_filter)
+        
+        serializer = EventSerializer(events, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        """Create a new event or draft (approved organizers and admins only)."""
+        if not request.user.role in ['organizer', 'admin']:
+            return Response(
+                {'error': 'Only organizers and administrators can create events'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check if organizer is approved (admins are always approved)
+        if request.user.role == 'organizer' and not request.user.is_verified:
+            return Response(
+                {'error': 'Your organizer account is pending admin approval. You cannot create events until approved.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Determine event status based on request data
+        event_status = request.data.get('status', Event.PENDING)
+        
+        # Validate status choice
+        if event_status not in [Event.DRAFT, Event.PENDING]:
+            return Response(
+                {'error': 'Event status must be either "draft" or "pending"'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = EventCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            # Set the status and created_by
+            event = serializer.save(created_by=request.user, status=event_status)
+            
+            # Return the event with full details
+            response_serializer = EventSerializer(event)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class EventDetailView(APIView):  # pylint: disable=no-member
