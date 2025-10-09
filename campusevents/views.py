@@ -15,8 +15,8 @@ from django.shortcuts import render
 from .models import Organization, Event, Ticket
 from .serializers import (
     CustomTokenObtainPairSerializer, UserSerializer, StudentRegistrationSerializer, 
-    OrganizationSerializer, EventSerializer, TicketSerializer, TicketIssueSerializer, 
-    TicketValidationSerializer
+    OrganizerRegistrationSerializer, OrganizationSerializer, EventSerializer, 
+    TicketSerializer, TicketIssueSerializer, TicketValidationSerializer
 )
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -105,6 +105,38 @@ class StudentRegistrationView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class OrganizerRegistrationView(APIView):
+    """View for organizer registration requiring admin approval."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """Register a new organizer (requires admin approval)."""
+        serializer = OrganizerRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            # Create user with password
+            user = serializer.save()
+            user.set_password(request.data.get('password'))
+            user.save()
+
+            # Return confirmation without JWT tokens (account inactive)
+            return Response({
+                'message': 'Organizer registration submitted successfully. Your account is pending admin approval.',
+                'user': {
+                    'id': user.id,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'role': user.role,
+                    'is_active': user.is_active,
+                    'is_verified': user.is_verified
+                },
+                'status': 'pending_approval',
+                'note': 'You will be notified when your account is approved and you can start creating events.'
+            }, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class OrganizationListView(APIView):  # pylint: disable=no-member
     """View to list and create organizations."""
     permission_classes = [IsAuthenticated]
@@ -141,10 +173,17 @@ class EventListView(APIView):  # pylint: disable=no-member
         return Response(serializer.data)
 
     def post(self, request):
-        """Create a new event (organizers and admins only)."""
+        """Create a new event (approved organizers and admins only)."""
         if not request.user.role in ['organizer', 'admin']:
             return Response(
                 {'error': 'Only organizers and administrators can create events'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check if organizer is approved (admins are always approved)
+        if request.user.role == 'organizer' and not request.user.is_verified:
+            return Response(
+                {'error': 'Your organizer account is pending admin approval. You cannot create events until approved.'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
