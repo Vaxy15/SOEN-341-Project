@@ -105,6 +105,49 @@ class UserStatusUpdateSerializer(serializers.Serializer):
     is_verified = serializers.BooleanField(required=False)
 
 
+class AdminEventSerializer(serializers.ModelSerializer):
+    """Serializer for admin event management with all fields."""
+    
+    org_name = serializers.CharField(source='org.name', read_only=True)
+    created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    created_by_email = serializers.CharField(source='created_by.email', read_only=True)
+    remaining_capacity = serializers.ReadOnlyField()
+    
+    class Meta:
+        model = Event
+        fields = [
+            'id', 'title', 'description', 'category', 'location',
+            'start_at', 'end_at', 'capacity', 'remaining_capacity',
+            'ticket_type', 'status', 'admin_comment', 'org', 'org_name', 
+            'created_by', 'created_by_name', 'created_by_email'
+        ]
+        read_only_fields = ['id', 'created_by']
+
+
+class EventApprovalSerializer(serializers.Serializer):
+    """Serializer for event approval actions."""
+    action = serializers.ChoiceField(choices=['approve', 'reject'])
+    comment = serializers.CharField(required=False, allow_blank=True, help_text="Admin comment for rejection or approval")
+    
+    def validate_action(self, value):
+        """Validate action choice."""
+        if value not in ['approve', 'reject']:
+            raise serializers.ValidationError("Action must be 'approve' or 'reject'")
+        return value
+
+
+class EventStatusUpdateSerializer(serializers.Serializer):
+    """Serializer for updating event status."""
+    status = serializers.ChoiceField(choices=Event.STATUS_CHOICES)
+    comment = serializers.CharField(required=False, allow_blank=True, help_text="Admin comment for status change")
+    
+    def validate_status(self, value):
+        """Validate status choice."""
+        if value not in [choice[0] for choice in Event.STATUS_CHOICES]:
+            raise serializers.ValidationError("Invalid status choice")
+        return value
+
+
 class StudentRegistrationSerializer(serializers.ModelSerializer):
     """Serializer for student registration with validation."""
     password = serializers.CharField(write_only=True, min_length=8)

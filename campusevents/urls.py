@@ -29,4 +29,11 @@ urlpatterns = [
     path('api/admin/users/<int:pk>/role/', views.AdminUserRoleView.as_view(), name='admin_user_role'),
     path('api/admin/users/<int:pk>/status/', views.AdminUserStatusView.as_view(), name='admin_user_status'),
     path('api/admin/pending-organizers/', views.AdminPendingOrganizersView.as_view(), name='admin_pending_organizers'),
+    
+    # Admin event moderation endpoints
+    path('api/admin/events/', views.AdminEventModerationView.as_view(), name='admin_events'),
+    path('api/admin/events/<int:pk>/', views.AdminEventDetailView.as_view(), name='admin_event_detail'),
+    path('api/admin/events/<int:pk>/approve/', views.AdminEventApprovalView.as_view(), name='admin_event_approval'),
+    path('api/admin/events/<int:pk>/status/', views.AdminEventStatusView.as_view(), name='admin_event_status'),
+    path('api/admin/pending-events/', views.AdminPendingEventsView.as_view(), name='admin_pending_events'),
 ]
