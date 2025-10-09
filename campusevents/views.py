@@ -14,8 +14,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from django.shortcuts import render
 from .models import Organization, Event, Ticket
 from .serializers import (
-    CustomTokenObtainPairSerializer, UserSerializer, OrganizationSerializer, 
-    EventSerializer, TicketSerializer, TicketIssueSerializer, TicketValidationSerializer
+    CustomTokenObtainPairSerializer, UserSerializer, StudentRegistrationSerializer, 
+    OrganizationSerializer, EventSerializer, TicketSerializer, TicketIssueSerializer, 
+    TicketValidationSerializer
 )
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -64,6 +65,41 @@ class UserRegistrationView(APIView):
                 'access': str(access_token),
                 'refresh': str(refresh),
                 'user': UserSerializer(user).data
+            }, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class StudentRegistrationView(APIView):
+    """View for student registration with specific validation."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """Register a new student."""
+        serializer = StudentRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            # Create user with password
+            user = serializer.save()
+            user.set_password(request.data.get('password'))
+            user.save()
+
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            access_token = refresh.access_token
+
+            return Response({
+                'message': 'Student registration successful',
+                'access': str(access_token),
+                'refresh': str(refresh),
+                'user': {
+                    'id': user.id,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'role': user.role,
+                    'is_active': user.is_active,
+                    'is_verified': user.is_verified
+                }
             }, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

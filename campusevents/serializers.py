@@ -61,6 +61,46 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 
+class StudentRegistrationSerializer(serializers.ModelSerializer):
+    """Serializer for student registration with validation."""
+    password = serializers.CharField(write_only=True, min_length=8)
+    password_confirm = serializers.CharField(write_only=True)
+    
+    class Meta:
+        model = User
+        fields = [
+            'email', 'password', 'password_confirm', 'first_name', 'last_name', 'role'
+        ]
+        extra_kwargs = {
+            'role': {'default': User.ROLE_STUDENT}
+        }
+    
+    def validate_email(self, value):
+        """Validate email is unique."""
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
+    
+    def validate(self, attrs):
+        """Validate password confirmation."""
+        if attrs['password'] != attrs['password_confirm']:
+            raise serializers.ValidationError("Passwords do not match.")
+        return attrs
+    
+    def create(self, validated_data):
+        """Create a new student user."""
+        # Remove password_confirm from validated_data
+        validated_data.pop('password_confirm')
+        
+        # Ensure role is set to student
+        validated_data['role'] = User.ROLE_STUDENT
+        validated_data['is_active'] = True  # Student account is immediately active
+        
+        # Create user
+        user = User.objects.create_user(**validated_data)
+        return user
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
     """Serializer for Organization model."""
 
