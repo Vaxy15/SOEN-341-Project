@@ -21,4 +21,12 @@ urlpatterns = [
     path('api/tickets/validate/', views.TicketValidationView.as_view(), name='ticket_validate'),
     path('api/tickets/my-tickets/', views.MyTicketsView.as_view(), name='my_tickets'),
     path('api/tickets/<int:pk>/', views.TicketDetailView.as_view(), name='ticket_detail'),
+    
+    # Admin user management endpoints
+    path('api/admin/users/', views.AdminUserManagementView.as_view(), name='admin_users'),
+    path('api/admin/users/<int:pk>/', views.AdminUserDetailView.as_view(), name='admin_user_detail'),
+    path('api/admin/users/<int:pk>/approve/', views.AdminUserApprovalView.as_view(), name='admin_user_approval'),
+    path('api/admin/users/<int:pk>/role/', views.AdminUserRoleView.as_view(), name='admin_user_role'),
+    path('api/admin/users/<int:pk>/status/', views.AdminUserStatusView.as_view(), name='admin_user_status'),
+    path('api/admin/pending-organizers/', views.AdminPendingOrganizersView.as_view(), name='admin_pending_organizers'),
 ]
