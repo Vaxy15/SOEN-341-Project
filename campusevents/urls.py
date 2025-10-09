@@ -12,6 +12,7 @@ urlpatterns = [
     path('api/organizations/', views.OrganizationListView.as_view(), name='organization_list'),
     path('api/events/', views.EventListView.as_view(), name='event_list'),
     path('api/events/discover/', views.EventDiscoveryView.as_view(), name='event_discovery'),
+    path('api/events/my-events/', views.OrganizerEventManagementView.as_view(), name='organizer_events'),
     path('api/events/<int:pk>/', views.EventDetailView.as_view(), name='event_detail'),
     path('api/logout/', views.logout_view, name='logout'),
     

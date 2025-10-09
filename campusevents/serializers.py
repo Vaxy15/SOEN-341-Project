@@ -4,6 +4,7 @@ Serializers for the campusevents app.
 
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.utils import timezone
 from .models import User, Organization, Event, Ticket
 
 
@@ -167,6 +168,79 @@ class EventSerializer(serializers.ModelSerializer):
             'created_by_name'
         ]
         read_only_fields = ['id', 'created_by']
+
+    def validate(self, attrs):
+        """Validate event data."""
+        start_at = attrs.get('start_at')
+        end_at = attrs.get('end_at')
+        
+        # Validate end time is after start time
+        if start_at and end_at and end_at <= start_at:
+            raise serializers.ValidationError(
+                "End time must be after start time."
+            )
+        
+        # Validate start time is in the future (unless it's a draft)
+        if start_at and start_at <= timezone.now() and attrs.get('status') != Event.DRAFT:
+            raise serializers.ValidationError(
+                "Start time must be in the future for non-draft events."
+            )
+        
+        # Validate capacity is positive
+        capacity = attrs.get('capacity', 0)
+        if capacity < 0:
+            raise serializers.ValidationError(
+                "Capacity must be a positive number."
+            )
+        
+        return attrs
+
+
+class EventCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating events with enhanced validation."""
+    
+    class Meta:
+        model = Event
+        fields = [
+            'title', 'description', 'category', 'location',
+            'start_at', 'end_at', 'capacity', 'ticket_type', 'org', 'status'
+        ]
+    
+    def validate(self, attrs):
+        """Validate event creation data."""
+        start_at = attrs.get('start_at')
+        end_at = attrs.get('end_at')
+        status = attrs.get('status', Event.PENDING)
+        
+        # Validate end time is after start time
+        if start_at and end_at and end_at <= start_at:
+            raise serializers.ValidationError(
+                "End time must be after start time."
+            )
+        
+        # Validate start time is in the future (unless it's a draft)
+        if start_at and start_at <= timezone.now() and status != Event.DRAFT:
+            raise serializers.ValidationError(
+                "Start time must be in the future for non-draft events."
+            )
+        
+        # Validate capacity is positive
+        capacity = attrs.get('capacity', 0)
+        if capacity < 0:
+            raise serializers.ValidationError(
+                "Capacity must be a positive number."
+            )
+        
+        # Validate required fields for non-draft events
+        if status != Event.DRAFT:
+            required_fields = ['title', 'description', 'location', 'start_at', 'end_at']
+            for field in required_fields:
+                if not attrs.get(field):
+                    raise serializers.ValidationError(
+                        f"{field.replace('_', ' ').title()} is required for non-draft events."
+                    )
+        
+        return attrs
 
 
 class TicketSerializer(serializers.ModelSerializer):
