@@ -117,6 +117,7 @@ class Event(models.Model):
         choices=STATUS_CHOICES,
         default=PENDING,
     )
+    admin_comment = models.TextField(blank=True, null=True, help_text="Admin comment when rejecting or modifying event")
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self) -> str:

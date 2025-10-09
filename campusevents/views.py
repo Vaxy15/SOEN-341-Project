@@ -22,7 +22,8 @@ from .serializers import (
     CustomTokenObtainPairSerializer, UserSerializer, AdminUserSerializer, 
     UserApprovalSerializer, UserRoleUpdateSerializer, UserStatusUpdateSerializer,
     StudentRegistrationSerializer, OrganizerRegistrationSerializer, OrganizationSerializer, 
-    EventSerializer, EventCreateSerializer, TicketSerializer, TicketIssueSerializer, 
+    EventSerializer, EventCreateSerializer, AdminEventSerializer, EventApprovalSerializer,
+    EventStatusUpdateSerializer, TicketSerializer, TicketIssueSerializer, 
     TicketValidationSerializer
 )
 
@@ -808,4 +809,219 @@ class AdminPendingOrganizersView(APIView):
         return Response({
             'pending_organizers': serializer.data,
             'count': pending_organizers.count()
+        })
+
+
+class AdminEventModerationView(APIView):
+    """View for admin event moderation."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get all events with filtering for admin moderation."""
+        # Check if user is admin
+        if not request.user.is_admin():
+            return Response(
+                {'error': 'Only administrators can moderate events'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get all events
+        events = Event.objects.all()
+        
+        # Apply filters
+        status_filter = request.query_params.get('status', None)
+        search = request.query_params.get('search', None)
+        org_filter = request.query_params.get('organization', None)
+        category_filter = request.query_params.get('category', None)
+        
+        if status_filter:
+            events = events.filter(status=status_filter)
+        
+        if search:
+            events = events.filter(
+                Q(title__icontains=search) |
+                Q(description__icontains=search) |
+                Q(location__icontains=search) |
+                Q(created_by__email__icontains=search)
+            )
+        
+        if org_filter:
+            events = events.filter(org__name__icontains=org_filter)
+        
+        if category_filter:
+            events = events.filter(category__icontains=category_filter)
+        
+        # Order by creation date (newest first)
+        events = events.order_by('-created_at')
+        
+        # Apply pagination
+        paginator = EventPagination()
+        page = paginator.paginate_queryset(events, request)
+        
+        if page is not None:
+            serializer = AdminEventSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        
+        # Fallback if pagination is not used
+        serializer = AdminEventSerializer(events, many=True)
+        return Response(serializer.data)
+
+
+class AdminEventDetailView(APIView):
+    """View for admin to manage individual events."""
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk):
+        """Get event by ID."""
+        try:
+            return Event.objects.get(pk=pk)
+        except Event.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        """Get event details for moderation."""
+        if not request.user.is_admin():
+            return Response(
+                {'error': 'Only administrators can view event details'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        event = self.get_object(pk)
+        if event is None:
+            return Response({'error': 'Event not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = AdminEventSerializer(event)
+        return Response(serializer.data)
+
+    def patch(self, request, pk):
+        """Update event details."""
+        if not request.user.is_admin():
+            return Response(
+                {'error': 'Only administrators can update events'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        event = self.get_object(pk)
+        if event is None:
+            return Response({'error': 'Event not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = AdminEventSerializer(event, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminEventApprovalView(APIView):
+    """View for admin to approve/reject events."""
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk):
+        """Get event by ID."""
+        try:
+            return Event.objects.get(pk=pk)
+        except Event.DoesNotExist:
+            return None
+
+    def post(self, request, pk):
+        """Approve or reject an event."""
+        if not request.user.is_admin():
+            return Response(
+                {'error': 'Only administrators can approve/reject events'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        event = self.get_object(pk)
+        if event is None:
+            return Response({'error': 'Event not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = EventApprovalSerializer(data=request.data)
+        if serializer.is_valid():
+            action = serializer.validated_data['action']
+            comment = serializer.validated_data.get('comment', '')
+            
+            if action == 'approve':
+                event.status = Event.APPROVED
+                event.admin_comment = comment if comment else None
+                event.save()
+                message = f'Event "{event.title}" has been approved successfully.'
+            else:  # reject
+                event.status = Event.REJECTED
+                event.admin_comment = comment if comment else 'Event rejected by administrator'
+                event.save()
+                message = f'Event "{event.title}" has been rejected.'
+            
+            return Response({
+                'message': message,
+                'event': AdminEventSerializer(event).data,
+                'comment': comment
+            }, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminEventStatusView(APIView):
+    """View for admin to change event status."""
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk):
+        """Get event by ID."""
+        try:
+            return Event.objects.get(pk=pk)
+        except Event.DoesNotExist:
+            return None
+
+    def post(self, request, pk):
+        """Change event status."""
+        if not request.user.is_admin():
+            return Response(
+                {'error': 'Only administrators can change event status'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        event = self.get_object(pk)
+        if event is None:
+            return Response({'error': 'Event not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = EventStatusUpdateSerializer(data=request.data)
+        if serializer.is_valid():
+            new_status = serializer.validated_data['status']
+            comment = serializer.validated_data.get('comment', '')
+            old_status = event.status
+            
+            event.status = new_status
+            if comment:
+                event.admin_comment = comment
+            event.save()
+            
+            return Response({
+                'message': f'Event status changed from {old_status} to {new_status}',
+                'event': AdminEventSerializer(event).data,
+                'comment': comment
+            }, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminPendingEventsView(APIView):
+    """View for admin to see pending event submissions."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get all pending event submissions."""
+        if not request.user.is_admin():
+            return Response(
+                {'error': 'Only administrators can view pending events'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get pending events
+        pending_events = Event.objects.filter(
+            status=Event.PENDING
+        ).order_by('-created_at')
+        
+        serializer = AdminEventSerializer(pending_events, many=True)
+        return Response({
+            'pending_events': serializer.data,
+            'count': pending_events.count()
         })
