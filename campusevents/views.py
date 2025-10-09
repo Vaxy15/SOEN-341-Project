@@ -12,12 +12,24 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.shortcuts import render
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters
+from rest_framework.pagination import PageNumberPagination
+from django.db.models import Q
+from datetime import datetime
 from .models import Organization, Event, Ticket
 from .serializers import (
     CustomTokenObtainPairSerializer, UserSerializer, StudentRegistrationSerializer, 
     OrganizerRegistrationSerializer, OrganizationSerializer, EventSerializer, 
     TicketSerializer, TicketIssueSerializer, TicketValidationSerializer
 )
+
+class EventPagination(PageNumberPagination):
+    """Custom pagination for events."""
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     """Custom JWT token view that includes user role information."""
@@ -192,6 +204,66 @@ class EventListView(APIView):  # pylint: disable=no-member
             serializer.save(created_by=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EventDiscoveryView(APIView):
+    """View for students to discover approved events with filtering and pagination."""
+    permission_classes = [IsAuthenticated]
+    pagination_class = EventPagination
+
+    def get(self, request):
+        """List approved events with filtering and pagination for students."""
+        # Only show approved events
+        events = Event.objects.filter(status=Event.APPROVED)
+        
+        # Apply filters
+        category = request.query_params.get('category', None)
+        organization = request.query_params.get('organization', None)
+        date_from = request.query_params.get('date_from', None)
+        date_to = request.query_params.get('date_to', None)
+        search = request.query_params.get('search', None)
+        
+        if category:
+            events = events.filter(category__icontains=category)
+        
+        if organization:
+            events = events.filter(org__name__icontains=organization)
+        
+        if date_from:
+            try:
+                date_from_obj = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
+                events = events.filter(start_at__gte=date_from_obj)
+            except ValueError:
+                pass
+        
+        if date_to:
+            try:
+                date_to_obj = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
+                events = events.filter(start_at__lte=date_to_obj)
+            except ValueError:
+                pass
+        
+        if search:
+            events = events.filter(
+                Q(title__icontains=search) | 
+                Q(description__icontains=search) | 
+                Q(location__icontains=search)
+            )
+        
+        # Order by start date (upcoming events first)
+        events = events.order_by('start_at')
+        
+        # Apply pagination
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(events, request)
+        
+        if page is not None:
+            serializer = EventSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        
+        # Fallback if pagination is not used
+        serializer = EventSerializer(events, many=True)
+        return Response(serializer.data)
 
 
 class EventDetailView(APIView):  # pylint: disable=no-member
