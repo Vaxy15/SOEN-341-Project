@@ -62,6 +62,49 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 
+class AdminUserSerializer(serializers.ModelSerializer):
+    """Serializer for admin user management with all fields."""
+    
+    class Meta:
+        model = User
+        fields = [
+            'id', 'email', 'first_name', 'last_name', 'role',
+            'student_id', 'phone_number', 'date_of_birth',
+            'is_verified', 'is_active', 'is_staff', 'is_superuser',
+            'created_at', 'updated_at', 'last_login'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'last_login']
+
+
+class UserApprovalSerializer(serializers.Serializer):
+    """Serializer for user approval actions."""
+    action = serializers.ChoiceField(choices=['approve', 'reject'])
+    reason = serializers.CharField(required=False, allow_blank=True)
+    
+    def validate_action(self, value):
+        """Validate action choice."""
+        if value not in ['approve', 'reject']:
+            raise serializers.ValidationError("Action must be 'approve' or 'reject'")
+        return value
+
+
+class UserRoleUpdateSerializer(serializers.Serializer):
+    """Serializer for updating user roles."""
+    role = serializers.ChoiceField(choices=User.ROLE_CHOICES)
+    
+    def validate_role(self, value):
+        """Validate role choice."""
+        if value not in [choice[0] for choice in User.ROLE_CHOICES]:
+            raise serializers.ValidationError("Invalid role choice")
+        return value
+
+
+class UserStatusUpdateSerializer(serializers.Serializer):
+    """Serializer for updating user status."""
+    is_active = serializers.BooleanField()
+    is_verified = serializers.BooleanField(required=False)
+
+
 class StudentRegistrationSerializer(serializers.ModelSerializer):
     """Serializer for student registration with validation."""
     password = serializers.CharField(write_only=True, min_length=8)

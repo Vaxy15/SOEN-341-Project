@@ -17,11 +17,13 @@ from rest_framework import filters
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
 from datetime import datetime
-from .models import Organization, Event, Ticket
+from .models import User, Organization, Event, Ticket
 from .serializers import (
-    CustomTokenObtainPairSerializer, UserSerializer, StudentRegistrationSerializer, 
-    OrganizerRegistrationSerializer, OrganizationSerializer, EventSerializer, 
-    EventCreateSerializer, TicketSerializer, TicketIssueSerializer, TicketValidationSerializer
+    CustomTokenObtainPairSerializer, UserSerializer, AdminUserSerializer, 
+    UserApprovalSerializer, UserRoleUpdateSerializer, UserStatusUpdateSerializer,
+    StudentRegistrationSerializer, OrganizerRegistrationSerializer, OrganizationSerializer, 
+    EventSerializer, EventCreateSerializer, TicketSerializer, TicketIssueSerializer, 
+    TicketValidationSerializer
 )
 
 class EventPagination(PageNumberPagination):
@@ -551,3 +553,259 @@ class TicketDetailView(APIView):
 
         ticket.cancel_ticket()
         return Response({'message': 'Ticket cancelled successfully'}, status=status.HTTP_200_OK)
+
+
+class AdminUserManagementView(APIView):
+    """View for admin user management."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get all users with filtering and search."""
+        # Check if user is admin
+        if not request.user.is_admin():
+            return Response(
+                {'error': 'Only administrators can manage users'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get all users
+        users = User.objects.all()
+        
+        # Apply filters
+        role_filter = request.query_params.get('role', None)
+        status_filter = request.query_params.get('status', None)
+        search = request.query_params.get('search', None)
+        verification_status = request.query_params.get('verification_status', None)
+        
+        if role_filter:
+            users = users.filter(role=role_filter)
+        
+        if status_filter == 'active':
+            users = users.filter(is_active=True)
+        elif status_filter == 'inactive':
+            users = users.filter(is_active=False)
+        
+        if verification_status == 'verified':
+            users = users.filter(is_verified=True)
+        elif verification_status == 'unverified':
+            users = users.filter(is_verified=False)
+        
+        if search:
+            users = users.filter(
+                Q(email__icontains=search) |
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(student_id__icontains=search)
+            )
+        
+        # Order by creation date (newest first)
+        users = users.order_by('-created_at')
+        
+        # Apply pagination
+        paginator = EventPagination()
+        page = paginator.paginate_queryset(users, request)
+        
+        if page is not None:
+            serializer = AdminUserSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        
+        # Fallback if pagination is not used
+        serializer = AdminUserSerializer(users, many=True)
+        return Response(serializer.data)
+
+
+class AdminUserDetailView(APIView):
+    """View for admin to manage individual users."""
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk):
+        """Get user by ID."""
+        try:
+            return User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        """Get user details."""
+        if not request.user.is_admin():
+            return Response(
+                {'error': 'Only administrators can view user details'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        user = self.get_object(pk)
+        if user is None:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = AdminUserSerializer(user)
+        return Response(serializer.data)
+
+    def patch(self, request, pk):
+        """Update user details."""
+        if not request.user.is_admin():
+            return Response(
+                {'error': 'Only administrators can update users'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        user = self.get_object(pk)
+        if user is None:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = AdminUserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminUserApprovalView(APIView):
+    """View for admin to approve/reject users."""
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk):
+        """Get user by ID."""
+        try:
+            return User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return None
+
+    def post(self, request, pk):
+        """Approve or reject a user."""
+        if not request.user.is_admin():
+            return Response(
+                {'error': 'Only administrators can approve/reject users'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        user = self.get_object(pk)
+        if user is None:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = UserApprovalSerializer(data=request.data)
+        if serializer.is_valid():
+            action = serializer.validated_data['action']
+            reason = serializer.validated_data.get('reason', '')
+            
+            if action == 'approve':
+                user.is_verified = True
+                user.is_active = True
+                user.save()
+                message = f'User {user.email} has been approved successfully.'
+            else:  # reject
+                user.is_verified = False
+                user.is_active = False
+                user.save()
+                message = f'User {user.email} has been rejected.'
+            
+            return Response({
+                'message': message,
+                'user': AdminUserSerializer(user).data,
+                'reason': reason
+            }, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminUserRoleView(APIView):
+    """View for admin to change user roles."""
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk):
+        """Get user by ID."""
+        try:
+            return User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return None
+
+    def post(self, request, pk):
+        """Change user role."""
+        if not request.user.is_admin():
+            return Response(
+                {'error': 'Only administrators can change user roles'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        user = self.get_object(pk)
+        if user is None:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = UserRoleUpdateSerializer(data=request.data)
+        if serializer.is_valid():
+            new_role = serializer.validated_data['role']
+            old_role = user.role
+            user.role = new_role
+            user.save()
+            
+            return Response({
+                'message': f'User role changed from {old_role} to {new_role}',
+                'user': AdminUserSerializer(user).data
+            }, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminUserStatusView(APIView):
+    """View for admin to activate/deactivate users."""
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk):
+        """Get user by ID."""
+        try:
+            return User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return None
+
+    def post(self, request, pk):
+        """Activate or deactivate a user."""
+        if not request.user.is_admin():
+            return Response(
+                {'error': 'Only administrators can change user status'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        user = self.get_object(pk)
+        if user is None:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = UserStatusUpdateSerializer(data=request.data)
+        if serializer.is_valid():
+            is_active = serializer.validated_data['is_active']
+            is_verified = serializer.validated_data.get('is_verified', user.is_verified)
+            
+            user.is_active = is_active
+            user.is_verified = is_verified
+            user.save()
+            
+            status_text = 'activated' if is_active else 'deactivated'
+            return Response({
+                'message': f'User {user.email} has been {status_text}',
+                'user': AdminUserSerializer(user).data
+            }, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminPendingOrganizersView(APIView):
+    """View for admin to see pending organizer registrations."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get all pending organizer registrations."""
+        if not request.user.is_admin():
+            return Response(
+                {'error': 'Only administrators can view pending organizers'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get unverified organizers
+        pending_organizers = User.objects.filter(
+            role=User.ROLE_ORGANIZER,
+            is_verified=False
+        ).order_by('-created_at')
+        
+        serializer = AdminUserSerializer(pending_organizers, many=True)
+        return Response({
+            'pending_organizers': serializer.data,
+            'count': pending_organizers.count()
+        })
