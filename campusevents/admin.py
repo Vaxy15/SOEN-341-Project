@@ -76,7 +76,7 @@ class TicketAdmin(admin.ModelAdmin):
     list_filter = ("status", "event", "issued_at")
     search_fields = ("ticket_id", "user__email", "event__title")
     readonly_fields = ("ticket_id", "qr_code_data", "issued_at", "used_at")
-    
+
     fieldsets = (
         (None, {"fields": ("ticket_id", "event", "user", "status")}),
         ("QR Code", {"fields": ("qr_code", "qr_code_data")}),
