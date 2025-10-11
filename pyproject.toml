@@ -1,3 +1,4 @@
+# pyproject.toml
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
@@ -6,20 +7,34 @@ build-backend = "setuptools.build_meta"
 name = "soen341_project"
 version = "0.1.0"
 description = "SOEN 341 school project"
-authors = [
-    { name = "Anthony Vaccaro" }
-]
+authors = [{ name = "Anthony Vaccaro" }]
 readme = "README.md"
 requires-python = ">=3.10"
 
-# Runtime dependencies (if your code needs numpy, pandas, etc.)
-dependencies = []
+# Runtime dependencies
+dependencies = [
+  "Django>=5.1",
+  "djangorestframework>=3.15",
+  "djangorestframework-simplejwt>=5.3",
+  "django-filter>=24.3",
+  "django-cors-headers>=4.4",
+]
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
-    "pylint"
+  "pytest>=8.0",
+  "pytest-django>=4.7",
+  "pylint",
 ]
 
 [tool.setuptools]
-packages = ["campus", "campusevents"]
+# Use automatic package discovery (safer than hard-coding)
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["campusevents*", "campus*"]
+
+# Pytest configuration (so Django loads)
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "campus.settings"
+pythonpath = ["."]
+django_find_project = false
