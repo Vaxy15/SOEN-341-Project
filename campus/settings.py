@@ -173,6 +173,13 @@ CORS_ALLOWED_HEADERS = [
     'x-requested-with',
 ]
 
+# Redirect after successful login
+LOGIN_REDIRECT_URL = '/events/create/'
+
+# Redirect after logout
+LOGOUT_REDIRECT_URL = '/login/'  # go back to login page after logout
+
+
 # --- Security Recommendations ---
 # In production, consider these additional settings:
 # SECURE_SSL_REDIRECT = True

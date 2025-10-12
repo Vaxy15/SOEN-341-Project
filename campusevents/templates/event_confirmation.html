@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Event Created</title>
+</head>
+<body>
+    <h1>Event Created Successfully!</h1>
+
+    <h2>{{ event.title }}</h2>
+    <p><strong>Description:</strong> {{ event.description }}</p>
+    <p><strong>Category:</strong> {{ event.category }}</p>
+    <p><strong>Location:</strong> {{ event.location }}</p>
+    <p><strong>Start:</strong> {{ event.start_at }}</p>
+    <p><strong>End:</strong> {{ event.end_at }}</p>
+    <p><strong>Capacity:</strong> {{ event.capacity }}</p>
+    <p><strong>Ticket Type:</strong> {{ event.ticket_type }}</p>
+    <p><strong>Status:</strong> {{ event.status }}</p>
+
+    <a href="{% url 'create_event' %}">Create Another Event</a>
+</body>
+</html>

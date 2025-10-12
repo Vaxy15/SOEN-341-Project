@@ -1,8 +1,24 @@
 from django.urls import path
 from . import views
 
+from django.urls import path
+from django.contrib.auth import views as auth_views
+from campusevents import views
+
 urlpatterns = [
-    path("", views.home, name="home"),
+    # Login/logout
+    path('login/', auth_views.LoginView.as_view(template_name='login.html'), name='login'),
+    path('logout/', auth_views.LogoutView.as_view(next_page='/login/'), name='logout'),
+
+    # Event creation
+    path('events/create/', views.create_event, name='create_event'),
+
+    # Home page (optional)
+    path('', views.home, name='home'),
+
+    path('events/confirmation/<int:pk>/', views.event_confirmation, name='event_confirmation'),
+
+
     # API endpoints
     path("api/profile/", views.UserProfileView.as_view(), name="user_profile"),
     path(
