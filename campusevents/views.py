@@ -40,7 +40,46 @@ import io
 import csv
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import Event, Organization
 
+def create_event(request):
+    if request.method == "POST":
+        title = request.POST.get("title")
+        description = request.POST.get("description")
+        category = request.POST.get("category")
+        location = request.POST.get("location")
+        start_at = request.POST.get("start_at")
+        end_at = request.POST.get("end_at")
+        capacity = request.POST.get("capacity")
+        ticket_type = request.POST.get("ticket_type")
+        status = request.POST.get("status")
+
+        default_org = Organization.objects.create(name="Default Org")
+
+        # Create the event and assign it to a variable
+        event = Event.objects.create(
+            title=title,
+            description=description,
+            category=category,
+            location=location,
+            start_at=start_at,
+            end_at=end_at,
+            capacity=capacity,
+            ticket_type=ticket_type,
+            status=status,
+            created_by=request.user,
+            org=default_org,
+        )
+
+        return redirect('event_confirmation', pk=event.pk)
+
+    return render(request, "create_event.html")
+
+
+def event_confirmation(request, pk):
+    event = get_object_or_404(Event, pk=pk)
+    return render(request, "event_confirmation.html", {"event": event})
 
 class EventPagination(PageNumberPagination):
     """Custom pagination for events."""
@@ -1210,3 +1249,5 @@ class EventAttendeesCSVListView(APIView):
             )
 
         return response
+
+
