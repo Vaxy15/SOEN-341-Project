@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Calendar{% endblock %}
+
+{% block head_extra %}
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/main.min.css" rel="stylesheet">
+  <style>
+    :root { --border:#e6e6ef; --muted:#666; }
+    .fc { --fc-border-color: var(--border); }
+    .fc .fc-toolbar-title { font-size: 22px; }
+    .fc-daygrid-event { border-radius: 8px; }
+    .fc-event-main { padding: 2px 4px; }
+    .fc-list-event-title a { text-decoration: none; }
+    .event-sub { display:block; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+{% endblock %}
+
+    {% block content %}
+    <div class="topbar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    <h1 style="margin:0;">Event Calendar</h1>
+    <div>
+        <a class="btn" href="{% url 'event_list_page' %}">Discover list</a>
+        {% if request.user.is_authenticated %}
+        {% if request.user.role == 'organizer' or request.user.role == 'admin' %}
+            <a class="btn" href="{% url 'create_event' %}">Create Event</a>
+        {% endif %}
+        {% endif %}
+    </div>
+    </div>
+
+
+  <div id="calendar"></div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const el = document.getElementById('calendar');
+      const calendar = new FullCalendar.Calendar(el, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+        },
+        navLinks: true,
+        nowIndicator: true,
+        height: 'auto',
+        firstDay: 0, // Sunday
+        events: {
+          url: '{% url "calendar_events_feed" %}',
+          failure() { alert('Could not load events.'); }
+        },
+        eventClick: function(info) {
+          // Let anchor navigation happen if URL is present
+          if (info.event.url) { return; }
+          info.jsEvent.preventDefault();
+        },
+        eventContent: function(arg) {
+          // Custom render: Title and a subtle second line with location / org / remaining
+          const title = document.createElement('div');
+          title.textContent = arg.event.title;
+
+          const sub = document.createElement('small');
+          sub.className = 'event-sub';
+          const ex = arg.event.extendedProps || {};
+          sub.textContent = [ex.location, ex.organization, (ex.remaining !== undefined ? `left: ${ex.remaining}` : '')]
+            .filter(Boolean).join(' • ');
+
+          const frag = document.createDocumentFragment();
+          frag.appendChild(title);
+          if (sub.textContent) frag.appendChild(sub);
+          return { domNodes: [frag] };
+        },
+      });
+
+      calendar.render();
+    });
+  </script>
+{% endblock %}

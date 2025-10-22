@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}My Events{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto; padding: 20px;">
+  <h1 style="font-size: 28px; margin-bottom: 20px;">🎟️ My Events</h1>
+
+  {% if tickets %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+      {% for t in tickets %}
+        <div style="border: 1px solid #ddd; border-radius: 12px; padding: 16px; background: #fff; box-shadow: 0 3px 6px rgba(0,0,0,0.05);">
+          <h3 style="margin-top: 0;">{{ t.event.title }}</h3>
+          <p style="color:#666;">{{ t.event.location }}<br>
+            {{ t.event.start_at|date:"M j, Y, P T" }} → {{ t.event.end_at|date:"M j, Y, P T" }}</p>
+
+          <p><strong>Status:</strong>
+            {% if t.status == "issued" %}
+              <span style="color:green;">Active</span>
+            {% elif t.status == "used" %}
+              <span style="color:blue;">Used</span>
+            {% elif t.status == "cancelled" %}
+              <span style="color:red;">Cancelled</span>
+            {% else %}
+              <span style="color:gray;">Expired</span>
+            {% endif %}
+          </p>
+
+          {% if t.qr_code %}
+            <div style="text-align:center; margin-top:12px;">
+              <img src="{{ t.qr_code.url }}" alt="QR Code for {{ t.ticket_id }}" style="width:160px; height:160px;">
+              <p style="font-size:12px; color:#888;">Ticket ID: {{ t.ticket_id }}</p>
+            </div>
+          {% else %}
+            <p style="color:#888;">QR code not available.</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div style="text-align:center; color:#666; padding:40px;">
+      <p>You haven’t claimed any tickets yet.</p>
+      <a href="{% url 'event_list_page' %}" class="btn btn-primary">Browse Events</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
