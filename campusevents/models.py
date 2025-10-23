@@ -3,7 +3,6 @@
 import io
 import json
 import uuid
-
 import qrcode
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
@@ -19,7 +18,6 @@ class CustomUserManager(BaseUserManager):
         if not email:
             raise ValueError("The Email field must be set")
         email = self.normalize_email(email)
-        # Ensure username exists to satisfy AbstractUser unique constraint
         extra_fields.setdefault("username", email)
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
@@ -63,18 +61,17 @@ class User(AbstractUser):
 
     objects = CustomUserManager()
 
-    def __str__(self) -> str:
+    def __str__(self):
         full = f"{self.first_name} {self.last_name}".strip()
         return f"{full} ({self.email})" if full else self.email
 
-    # Helpers
-    def is_student(self) -> bool:
+    def is_student(self):
         return self.role == self.ROLE_STUDENT
 
-    def is_organizer(self) -> bool:
+    def is_organizer(self):
         return self.role == self.ROLE_ORGANIZER
 
-    def is_admin(self) -> bool:
+    def is_admin(self):
         return self.role == self.ROLE_ADMIN
 
 
@@ -83,8 +80,8 @@ class Organization(models.Model):
     description = models.TextField(blank=True)
     approved = models.BooleanField(default=False)
 
-    def __str__(self) -> str:
-        return str(self.name)
+    def __str__(self):
+        return self.name
 
 
 class Event(models.Model):
@@ -118,18 +115,19 @@ class Event(models.Model):
         choices=STATUS_CHOICES,
         default=PENDING,
     )
-    admin_comment = models.TextField(blank=True, null=True, help_text="Admin comment when rejecting or modifying event")
+    admin_comment = models.TextField(blank=True, null=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
 
-    def __str__(self) -> str:
-        return str(self.title)
+    # timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.title
 
     @property
-    def remaining_capacity(self) -> int:
-        """Return remaining ticket capacity, never below zero."""
+    def remaining_capacity(self):
         issued = 0
-        # If a reverse relation named "tickets" exists, count issued tickets.
-        # (If not, this safely stays at 0.)
         if hasattr(self, "tickets"):
             issued = self.tickets.filter(status="issued").count()
         return max(0, self.capacity - issued)
@@ -150,103 +148,67 @@ class Ticket(models.Model):
         (EXPIRED, "Expired"),
     ]
 
-    # Relationships
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="tickets")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="tickets")
 
-    # Ticket details
     ticket_id = models.CharField(max_length=50, unique=True, db_index=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=ISSUED)
-
-    # QR Code
     qr_code = models.ImageField(upload_to="qr_codes/", blank=True, null=True)
-    qr_code_data = models.TextField(blank=True)  # Store QR code data for validation
-
-    # Timestamps
+    qr_code_data = models.TextField(blank=True)
     issued_at = models.DateTimeField(auto_now_add=True)
     used_at = models.DateTimeField(blank=True, null=True)
     expires_at = models.DateTimeField(blank=True, null=True)
-
-    # Additional fields
     seat_number = models.CharField(max_length=20, blank=True)
     notes = models.TextField(blank=True)
 
     class Meta:
         ordering = ["-issued_at"]
-        unique_together = ["event", "user"]  # One ticket per user per event
+        unique_together = ["event", "user"]
 
-    def __str__(self) -> str:
+    def __str__(self):
         return f"Ticket {self.ticket_id} for {self.event.title}"
 
     def save(self, *args, **kwargs):
-        """Generate ticket ID and QR code on save."""
         if not self.ticket_id:
-            # Generate unique ticket ID
             self.ticket_id = f"TKT-{uuid.uuid4().hex[:12].upper()}"
-
-        # Generate QR code data
         if not self.qr_code_data:
             self.qr_code_data = self.generate_qr_data()
-
-        # Generate QR code image
         if not self.qr_code:
             self.generate_qr_code()
-
         super().save(*args, **kwargs)
 
-    def generate_qr_data(self) -> str:
-        """Generate QR code data string."""
+    def generate_qr_data(self):
         data = {
             "ticket_id": self.ticket_id,
             "event_id": self.event.id,
             "user_id": self.user.id,
             "event_title": self.event.title,
             "user_name": f"{self.user.first_name} {self.user.last_name}",
-            "issued_at": self.issued_at.isoformat(),
+            "issued_at": self.issued_at.isoformat() if self.issued_at else timezone.now().isoformat(),
         }
         return json.dumps(data)
 
+
     def generate_qr_code(self):
-        """Generate QR code image and save to qr_code field."""
         if not self.qr_code_data:
             return
-
-        # Create QR code
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
-            box_size=10,
-            border=4,
-        )
+        qr = qrcode.QRCode(version=1, box_size=10, border=4)
         qr.add_data(self.qr_code_data)
         qr.make(fit=True)
-
-        # Create image
         img = qr.make_image(fill_color="black", back_color="white")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        self.qr_code.save(f"ticket_{self.ticket_id}.png", ContentFile(buf.getvalue()), save=False)
 
-        # Convert to bytes
-        buffer = io.BytesIO()
-        img.save(buffer, format='PNG')
-        buffer.seek(0)
-
-        # Save to model
-        filename = f"ticket_{self.ticket_id}.png"
-        self.qr_code.save(
-            filename,
-            ContentFile(buffer.getvalue()),
-            save=False
-        )
-
-    def is_valid(self) -> bool:
-        """Check if ticket is valid for use."""
+    def is_valid(self):
         return (
-            self.status == self.ISSUED and
-            (not self.expires_at or self.expires_at > timezone.now()) and
-            self.event.status == Event.APPROVED
+            self.status == self.ISSUED
+            and (not self.expires_at or self.expires_at > timezone.now())
+            and self.event.status == Event.APPROVED
         )
 
     def use_ticket(self):
-        """Mark ticket as used."""
         if self.is_valid():
             self.status = self.USED
             self.used_at = timezone.now()
@@ -255,13 +217,11 @@ class Ticket(models.Model):
         return False
 
     def cancel_ticket(self):
-        """Cancel the ticket."""
         self.status = self.CANCELLED
         self.save()
 
     @property
-    def qr_code_url(self) -> str:
-        """Get QR code URL for API responses."""
+    def qr_code_url(self):
         if self.qr_code:
             return self.qr_code.url
         return None

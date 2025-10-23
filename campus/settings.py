@@ -50,11 +50,13 @@ TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         # Project-level templates folder (alongside manage.py)
-        "DIRS": [BASE_DIR / "templates"],
+        "DIRS": [BASE_DIR / "templates",
+                 BASE_DIR / "campusevents" / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.debug",
+                "django.template.context_processors.request",
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
@@ -89,11 +91,11 @@ USE_I18N = True
 USE_TZ = True
 
 # --- Static & media files ---
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 # Where your CSS/JS/images live in dev (optional but convenient)
 STATICFILES_DIRS = [BASE_DIR / "static"]
 # User-uploaded files (e.g., if you ever store uploads)
-MEDIA_URL = "media/"
+MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 # --- Default primary key field type ---
@@ -180,9 +182,6 @@ LOGIN_REDIRECT_URL = '/events/create/'
 LOGOUT_REDIRECT_URL = '/login/'  # go back to login page after logout
 
 
-# --- Security Recommendations ---
-# In production, consider these additional settings:
-# SECURE_SSL_REDIRECT = True
-# SECURE_BROWSER_XSS_FILTER = True
-# SECURE_CONTENT_TYPE_NOSNIFF = True
-# X_FRAME_OPTIONS = 'DENY'
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'event_list_page'   
+LOGOUT_REDIRECT_URL = '/' 

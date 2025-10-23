@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Create Account{% endblock %}
+
+{% block content %}
+<h2>Create an Account</h2>
+
+<form method="post" action="{% url 'register' %}" style="max-width:560px;">
+  {% csrf_token %}
+
+  <label>Account Type:</label><br>
+  <select name="role" required>
+    <option value="" disabled {% if not form.role %}selected{% endif %}>Choose...</option>
+    <option value="student" {% if form.role == "student" %}selected{% endif %}>Student</option>
+    <option value="organizer" {% if form.role == "organizer" %}selected{% endif %}>Event Organizer</option>
+  </select>
+  {% if errors.role %}<div class="errorlist">{{ errors.role|join:", " }}</div>{% endif %}
+  <br><br>
+
+  <label>First Name:</label><br>
+  <input type="text" name="first_name" value="{{ form.first_name|default:'' }}" required>
+  {% if errors.first_name %}<div class="errorlist">{{ errors.first_name|join:", " }}</div>{% endif %}
+  <br><br>
+
+  <label>Last Name:</label><br>
+  <input type="text" name="last_name" value="{{ form.last_name|default:'' }}" required>
+  {% if errors.last_name %}<div class="errorlist">{{ errors.last_name|join:", " }}</div>{% endif %}
+  <br><br>
+
+  <label>Email:</label><br>
+  <input type="email" name="email" value="{{ form.email|default:'' }}" required>
+  {% if errors.email %}<div class="errorlist">{{ errors.email|join:", " }}</div>{% endif %}
+  <br><br>
+
+  <label>Password:</label><br>
+  <input type="password" name="password" required>
+  {% if errors.password %}<div class="errorlist">{{ errors.password|join:", " }}</div>{% endif %}
+  <br><br>
+
+  <label>Confirm Password:</label><br>
+  <input type="password" name="password_confirm" required>
+  {% if errors.password_confirm %}<div class="errorlist">{{ errors.password_confirm|join:", " }}</div>{% endif %}
+  {% if errors.non_field_errors %}<div class="errorlist">{{ errors.non_field_errors|join:", " }}</div>{% endif %}
+  <br><br>
+
+  <fieldset style="border:1px solid #e6e6ef; padding:12px; border-radius:10px;">
+    <legend style="font-size:14px; color:#666;">Optional</legend>
+
+    <label>Student ID:</label><br>
+    <input type="text" name="student_id" value="{{ form.student_id|default:'' }}">
+    {% if errors.student_id %}<div class="errorlist">{{ errors.student_id|join:", " }}</div>{% endif %}
+    <br><br>
+
+    <label>Phone Number:</label><br>
+    <input type="text" name="phone_number" value="{{ form.phone_number|default:'' }}">
+    {% if errors.phone_number %}<div class="errorlist">{{ errors.phone_number|join:", " }}</div>{% endif %}
+  </fieldset>
+  <br>
+
+  <button type="submit" class="btn">Create Account</button>
+</form>
+
+<p style="margin-top: 16px;">
+  Already have an account? <a href="{% url 'login' %}">Login here</a>
+</p>
+
+
+
+<style>
+  .errorlist { color: #b00020; margin-top: 6px; }
+</style>
+{% endblock %}
