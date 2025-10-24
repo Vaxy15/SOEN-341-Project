@@ -170,6 +170,76 @@ def test_logout_behavior(db, api_client, setup_data):
     assert resp.status_code in [status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND]
 
 
+def test_pending_organizers_requires_admin(db, api_client, setup_data):
+    """Only admins should access the pending organizers list."""
+    url = _url_or("admin_pending_organizers", "/api/admin/pending-organizers/")
+    api_client.force_authenticate(setup_data["student"])
+    resp = api_client.get(url)
+    assert resp.status_code in [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND]
+
+
+def test_pending_organizers_returns_paginated_results(db, api_client, setup_data):
+    """Admin should receive paginated pending organizer data."""
+    # Ensure the default fixture organizer is not pending to control counts
+    setup_data["organizer"].is_verified = True
+    setup_data["organizer"].save()
+
+    # Create pending organizers
+    for idx in range(3):
+        User.objects.create_user(
+            email=f"pending{idx}@example.com",
+            password="pass1234",
+            first_name=f"Pending{idx}",
+            last_name="User",
+            role="organizer",
+        )
+
+    url = _url_or("admin_pending_organizers", "/api/admin/pending-organizers/")
+    api_client.force_authenticate(setup_data["admin"])
+    resp = api_client.get(url)
+
+    if resp.status_code == status.HTTP_200_OK:
+        data = resp.json()
+        assert "results" in data
+        assert data["count"] >= 3
+        assert all(item.get("status") == "pending" for item in data["results"])
+    else:
+        assert resp.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_pending_organizers_search_filters_results(db, api_client, setup_data):
+    """Search query should narrow pending organizer list."""
+    setup_data["organizer"].is_verified = True
+    setup_data["organizer"].save()
+
+    target = User.objects.create_user(
+        email="unique.organizer@example.com",
+        password="pass1234",
+        first_name="Unique",
+        last_name="Person",
+        role="organizer",
+    )
+    User.objects.create_user(
+        email="other.organizer@example.com",
+        password="pass1234",
+        first_name="Other",
+        last_name="Individual",
+        role="organizer",
+    )
+
+    url = _url_or("admin_pending_organizers", "/api/admin/pending-organizers/")
+    api_client.force_authenticate(setup_data["admin"])
+    resp = api_client.get(url, {"search": "unique"})
+
+    if resp.status_code == status.HTTP_200_OK:
+        data = resp.json()
+        emails = [item.get("email") for item in data.get("results", [])]
+        assert target.email in emails
+        assert "other.organizer@example.com" not in emails
+    else:
+        assert resp.status_code == status.HTTP_404_NOT_FOUND
+
+
 # --- run with pytest when executed as a script (VS Code "Run" button) ---
 if __name__ == "__main__":
     import pytest
