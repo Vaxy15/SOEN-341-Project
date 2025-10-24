@@ -893,6 +893,8 @@ class AdminPendingOrganizersView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    pagination_class = EventPagination
+
     def get(self, request):
         """Get all pending organizer registrations."""
         if not request.user.is_admin():
@@ -906,10 +908,25 @@ class AdminPendingOrganizersView(APIView):
             role=User.ROLE_ORGANIZER, is_verified=False
         ).order_by("-created_at")
 
-        serializer = AdminUserSerializer(pending_organizers, many=True)
-        return Response(
-            {"pending_organizers": serializer.data, "count": pending_organizers.count()}
-        )
+        # Apply search filter
+        search = request.query_params.get("search")
+        if search:
+            pending_organizers = pending_organizers.filter(
+                Q(email__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+            )
+
+        # Paginate results
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(pending_organizers, request)
+
+        serializer = AdminUserSerializer(page or pending_organizers, many=True)
+
+        if page is not None:
+            return paginator.get_paginated_response(serializer.data)
+
+        return Response(serializer.data)
 
 
 class AdminEventModerationView(APIView):
