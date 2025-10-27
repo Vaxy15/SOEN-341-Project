@@ -1,3 +1,4 @@
+# campusevents/serializers.py
 """
 Serializers for the campusevents app.
 """
