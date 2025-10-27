@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block content %}
+  <h1>Login</h1>
+  <style>
+    .errorlist { color: #b00020; margin: 0 0 8px 0; padding: 0; list-style: none; }
+    label { display:block; margin-top: 8px; }
+    input { padding:8px 10px; border:1px solid #e6e6ef; border-radius:10px; width: min(460px, 100%); }
+  </style>
+
+  {% if form.non_field_errors %}
+    <ul class="errorlist">
+      {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+
+  <form method="post" action="{% url 'login' %}">
+    {% csrf_token %}
+
+    <!-- Username field (this is actually your EMAIL) -->
+    <label for="id_username">{{ form.username.label }}:</label>
+    {{ form.username }}
+    {% if form.username.errors %}
+      <ul class="errorlist">{% for e in form.username.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+    {% endif %}
+
+    <label for="id_password">{{ form.password.label }}:</label>
+    {{ form.password }}
+    {% if form.password.errors %}
+      <ul class="errorlist">{% for e in form.password.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+    {% endif %}
+
+    {% if next %}<input type="hidden" name="next" value="{{ next }}"/>{% endif %}
+
+    <button type="submit" class="btn" style="margin-top:12px;">Sign in</button>
+  </form>
+{% endblock %}

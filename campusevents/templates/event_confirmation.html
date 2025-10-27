@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Event Created{% endblock %}
+{% block content %}
+  <h1>Event Created Successfully!</h1>
+
+  <h2>{{ event.title }}</h2>
+  <p><strong>Description:</strong> {{ event.description }}</p>
+  <p><strong>Category:</strong> {{ event.category }}</p>
+  <p><strong>Location:</strong> {{ event.location }}</p>
+  <p><strong>Start:</strong> {{ event.start_at }}</p>
+  <p><strong>End:</strong> {{ event.end_at }}</p>
+  <p><strong>Capacity:</strong> {{ event.capacity }}</p>
+  <p><strong>Ticket Type:</strong> {{ event.ticket_type }}</p>
+  <p><strong>Status:</strong> {{ event.get_status_display }}</p>
+
+  <p style="display:flex; gap:8px; flex-wrap:wrap;">
+    <a class="btn" href="{% url 'create_event' %}">Create Another</a>
+    <a class="btn" href="{% url 'event_list_page' %}">Back to Discover</a>
+  </p>
+{% endblock %}
