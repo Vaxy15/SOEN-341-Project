@@ -655,11 +655,39 @@ class AdminUserStatusView(APIView):
 class AdminPendingOrganizersView(APIView):
     permission_classes = [IsAuthenticated]
 
+    pagination_class = EventPagination
+
     def get(self, request):
         if not request.user.is_admin():
-            return Response({"error": "Only administrators can view pending organizers"}, status=status.HTTP_403_FORBIDDEN)
-        pending_organizers = User.objects.filter(role=User.ROLE_ORGANIZER, is_verified=False).order_by("-created_at")
-        return Response({"pending_organizers": AdminUserSerializer(pending_organizers, many=True).data, "count": pending_organizers.count()})
+            return Response(
+                {"error": "Only administrators can view pending organizers"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Get unverified organizers
+        pending_organizers = User.objects.filter(
+            role=User.ROLE_ORGANIZER, is_verified=False
+        ).order_by("-created_at")
+
+        # Apply search filter
+        search = request.query_params.get("search")
+        if search:
+            pending_organizers = pending_organizers.filter(
+                Q(email__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+            )
+
+        # Paginate results
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(pending_organizers, request)
+
+        serializer = AdminUserSerializer(page or pending_organizers, many=True)
+
+        if page is not None:
+            return paginator.get_paginated_response(serializer.data)
+
+        return Response(serializer.data)
 
 
 class AdminEventModerationView(APIView):

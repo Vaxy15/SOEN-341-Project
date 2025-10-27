@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 # Ensure the project root (folder that contains manage.py) is on sys.path
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -12,14 +13,14 @@ if str(PROJECT_ROOT) not in sys.path:
 # Point Django at the real settings module (adjust if needed)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "campus.settings")
 
-# Initialize Django when running this file directly
+# # Initialize Django when running this file directly
 import django
 try:
     django.setup()
 except Exception:
     # When pytest-django runs, setup is already done; ignore double-setup
     pass
-# ---------------------------------------------------------------
+# # ---------------------------------------------------------------
 
 import datetime as dt
 import pytest
@@ -79,7 +80,7 @@ def setup_data(create_users):
     return {"student": student, "organizer": organizer, "admin": admin, "org": org, "event": event}
 
 
-# ---------- Tests ----------
+# # ---------- Tests ----------
 
 def _url_or(name, default):
     """Try reverse(name); if fails, fallback to default path."""
@@ -146,33 +147,35 @@ def test_event_list_auth_and_content(db, api_client, setup_data):
         assert "Intro to Git" in (titles or ["Intro to Git"])
 
 
-# def test_event_create_permissions(db, api_client, setup_data):
-#     """Student forbidden; organizer/admin allowed."""
-#     url = _url_or("events", "/api/events/")
-#     payload = {
-#         "org": setup_data["org"].id,
-#         "title": "New Event",
-#         "description": "Desc",
-#         "category": "Talk",
-#         "location": "EV-2.184",
-#         "start_at": (timezone.now() + dt.timedelta(days=2)).isoformat(),
-#         "end_at": (timezone.now() + dt.timedelta(days=2, hours=2)).isoformat(),
-#         "capacity": 50,
-#         "ticket_type": "free",
-#         "status": "pending",
-#     }
 
-#     api_client.force_authenticate(setup_data["student"])
-#     resp_student = api_client.post(url, payload, format="json")
-#     assert resp_student.status_code in [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND]
+def test_event_create_permissions(db, api_client, setup_data):
+    """Student forbidden; organizer/admin allowed."""
+    url = _url_or("events", "/api/events/")
+    payload = {
+        "org": setup_data["org"].id,
+        "title": "New Event",
+        "description": "Desc",
+        "category": "Talk",
+        "location": "EV-2.184",
+        "start_at": (timezone.now() + dt.timedelta(days=2)).isoformat(),
+        "end_at": (timezone.now() + dt.timedelta(days=2, hours=2)).isoformat(),
+        "capacity": 50,
+        "ticket_type": "free",
+        "status": "pending",
+    }
 
-#     api_client.force_authenticate(setup_data["organizer"])
-#     resp_org = api_client.post(url, payload, format="json")
-#     assert resp_org.status_code in [status.HTTP_201_CREATED, status.HTTP_404_NOT_FOUND]
+    api_client.force_authenticate(setup_data["student"])
+    resp_student = api_client.post(url, payload, format="json")
+    assert resp_student.status_code in [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND]
 
-#     api_client.force_authenticate(setup_data["admin"])
-#     resp_admin = api_client.post(url, payload, format="json")
-#     assert resp_admin.status_code in [status.HTTP_201_CREATED, status.HTTP_404_NOT_FOUND]
+    api_client.force_authenticate(setup_data["organizer"])
+    resp_org = api_client.post(url, payload, format="json")
+    assert resp_org.status_code in [status.HTTP_201_CREATED, status.HTTP_404_NOT_FOUND]
+
+    api_client.force_authenticate(setup_data["admin"])
+    resp_admin = api_client.post(url, payload, format="json")
+    assert resp_admin.status_code in [status.HTTP_201_CREATED, status.HTTP_404_NOT_FOUND]
+
 
 
 def test_event_detail_access(db, api_client, setup_data):
@@ -197,8 +200,10 @@ def test_event_detail_access(db, api_client, setup_data):
 #     assert resp.status_code in [status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND]
 
 
-# # --- run with pytest when executed as a script (VS Code "Run" button) ---
-# if __name__ == "__main__":
-#     import pytest
-#     sys.exit(pytest.main(["-v", "--ds=campus.settings", __file__]))
-# # -----------------------------------------------------------------------
+
+# --- run with pytest when executed as a script (VS Code "Run" button) ---
+if __name__ == "__main__":
+    import pytest
+    sys.exit(pytest.main(["-v", "--ds=campus.settings", __file__]))
+# -----------------------------------------------------------------------
+
