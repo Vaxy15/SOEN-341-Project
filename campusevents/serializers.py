@@ -66,15 +66,25 @@ class UserSerializer(serializers.ModelSerializer):
 class AdminUserSerializer(serializers.ModelSerializer):
     """Serializer for admin user management with all fields."""
 
+    status = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
             'id', 'email', 'first_name', 'last_name', 'role',
             'student_id', 'phone_number', 'date_of_birth',
             'is_verified', 'is_active', 'is_staff', 'is_superuser',
-            'created_at', 'updated_at', 'last_login'
+            'created_at', 'updated_at', 'last_login', 'status'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'last_login']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'last_login', 'status']
+
+    def get_status(self, obj):
+        """Return a concise status label for admin dashboards."""
+        if not obj.is_active:
+            return "inactive"
+        if not obj.is_verified and obj.role == User.ROLE_ORGANIZER:
+            return "pending"
+        return "active"
 
 
 class UserApprovalSerializer(serializers.Serializer):
