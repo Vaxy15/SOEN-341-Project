@@ -48,6 +48,8 @@ urlpatterns = [
     path("api/admin/events/", views.AdminEventModerationView.as_view(), name="admin_events"),
     path("api/admin/events/<int:pk>/", views.AdminEventDetailView.as_view(), name="admin_event_detail"),
     path("api/admin/events/<int:pk>/approve/", views.AdminEventApprovalView.as_view(), name="admin_event_approval"),
+    # Alias to match alternative naming (/approval/)
+    path("api/admin/events/<int:pk>/approval/", views.AdminEventApprovalView.as_view(), name="admin_event_approval_alias"),
     path("api/admin/events/<int:pk>/status/", views.AdminEventStatusView.as_view(), name="admin_event_status"),
     path("api/admin/pending-events/", views.AdminPendingEventsView.as_view(), name="admin_pending_events"),
 ]

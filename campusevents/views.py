@@ -23,6 +23,7 @@ from django.utils.dateparse import parse_datetime
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from .permissions import IsAdmin
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
@@ -691,11 +692,9 @@ class AdminPendingOrganizersView(APIView):
 
 
 class AdminEventModerationView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdmin]
 
     def get(self, request):
-        if not request.user.is_admin():
-            return Response({"error": "Only administrators can moderate events"}, status=status.HTTP_403_FORBIDDEN)
 
         events = Event.objects.all()
 
@@ -727,7 +726,7 @@ class AdminEventModerationView(APIView):
 
 
 class AdminEventDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdmin]
 
     def get_object(self, pk):
         try:
@@ -736,16 +735,13 @@ class AdminEventDetailView(APIView):
             return None
 
     def get(self, request, pk):
-        if not request.user.is_admin():
-            return Response({"error": "Only administrators can view event details"}, status=status.HTTP_403_FORBIDDEN)
         event = self.get_object(pk)
         if event is None:
             return Response({"error": "Event not found"}, status=status.HTTP_404_NOT_FOUND)
         return Response(AdminEventSerializer(event).data)
 
     def patch(self, request, pk):
-        if not request.user.is_admin():
-            return Response({"error": "Only administrators can update events"}, status=status.HTTP_403_FORBIDDEN)
+        # Permission enforced by IsAdmin permission class
         event = self.get_object(pk)
         if event is None:
             return Response({"error": "Event not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -757,7 +753,7 @@ class AdminEventDetailView(APIView):
 
 
 class AdminEventApprovalView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdmin]
 
     def get_object(self, pk):
         try:
@@ -766,8 +762,7 @@ class AdminEventApprovalView(APIView):
             return None
 
     def post(self, request, pk):
-        if not request.user.is_admin():
-            return Response({"error": "Only administrators can approve/reject events"}, status=status.HTTP_403_FORBIDDEN)
+        # Permission enforced by IsAdmin permission class
         event = self.get_object(pk)
         if event is None:
             return Response({"error": "Event not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -792,7 +787,7 @@ class AdminEventApprovalView(APIView):
 
 
 class AdminEventStatusView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdmin]
 
     def get_object(self, pk):
         try:
@@ -801,8 +796,6 @@ class AdminEventStatusView(APIView):
             return None
 
     def post(self, request, pk):
-        if not request.user.is_admin():
-            return Response({"error": "Only administrators can change event status"}, status=status.HTTP_403_FORBIDDEN)
         event = self.get_object(pk)
         if event is None:
             return Response({"error": "Event not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -819,11 +812,9 @@ class AdminEventStatusView(APIView):
 
 
 class AdminPendingEventsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdmin]
 
     def get(self, request):
-        if not request.user.is_admin():
-            return Response({"error": "Only administrators can view pending events"}, status=status.HTTP_403_FORBIDDEN)
         pending_events = Event.objects.filter(status=Event.PENDING).order_by("-created_at")
         return Response({"pending_events": AdminEventSerializer(pending_events, many=True).data, "count": pending_events.count()})
 
