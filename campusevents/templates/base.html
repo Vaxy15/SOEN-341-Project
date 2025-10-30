@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Campus Events{% endblock %}</title>
+  <style>
+    :root { --bg:#f7f7fb; --panel:#fff; --text:#111; --muted:#666; --border:#e6e6ef; --primary:#3b82f6; --primary-ghost:#e8f0fe; }
+    body { margin:0; font-family: Inter, system-ui, Segoe UI, Arial, sans-serif; background:var(--bg); color:var(--text); }
+    .container { max-width:1100px; margin:0 auto; padding:20px 16px; }
+    .btn { border:1px solid var(--border); border-radius:10px; padding:8px 12px; background:#fff; text-decoration:none; color:inherit; cursor:pointer; }
+    .btn:disabled { opacity:.6; cursor:not-allowed; }
+    .nav { position:sticky; top:0; z-index:10; background:#fff; border-bottom:1px solid var(--border); }
+    .nav-inner { display:flex; align-items:center; gap:16px; }
+    .nav a { text-decoration:none; color:inherit; padding:10px 12px; border-radius:10px; }
+    .nav a.active { background:var(--primary-ghost); color:#1d4ed8; }
+    main { padding-top:14px; }
+  </style>
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+<nav class="nav">
+  <div class="container nav-inner" style="justify-content: space-between;">
+    <div style="display:flex; gap:6px; align-items:center;">
+      <a href="{% url 'home' %}" class="{% if request.path == '/' %}active{% endif %}">Home</a>
+      <a href="{% url 'event_list_page' %}" class="{% if request.path == '/events/' or request.path|slice:':8' == '/events/' %}active{% endif %}">Discover</a>
+
+      {% if request.user.is_authenticated %}
+        {% if request.user.role == 'organizer' or request.user.role == 'admin' %}
+          <a href="{% url 'create_event' %}" class="{% if request.path == '/events/create/' %}active{% endif %}">Create Event</a>
+        {% else %}
+          <a href="{% url 'my_events' %}" class="{% if request.path == '/my-events/' %}active{% endif %}">My Events</a>
+          <a href="{% url 'calendar_page' %}" class="{% if request.path == '/calendar/' %}active{% endif %}">Calendar</a>
+        {% endif %}
+      {% endif %}
+    </div>
+
+    <div style="display:flex; gap:8px; align-items:center;">
+      {% if request.user.is_authenticated %}
+        <span style="font-size:14px; color:var(--muted);">Hi, {{ request.user.first_name|default:request.user.email }}</span>
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button class="btn" type="submit">Logout</button>
+        </form>
+      {% else %}
+        <a class="btn" href="{% url 'login' %}">Login</a>
+        <a class="btn" href="{% url 'register' %}">Sign Up</a>
+      {% endif %}
+    </div>
+  </div>
+</nav>
+
+<main class="container">
+  {% if messages %}
+    <div style="margin:10px 0;">
+      {% for message in messages %}
+        <div class="card" style="padding:10px; border-left:4px solid #3b82f6; margin-bottom:8px;">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>
