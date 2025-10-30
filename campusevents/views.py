@@ -692,6 +692,7 @@ class AdminPendingOrganizersView(APIView):
 
 class AdminEventModerationView(APIView):
     permission_classes = [IsAuthenticated]
+    pagination_class = EventPagination
 
     def get(self, request):
         if not request.user.is_admin():
@@ -718,12 +719,14 @@ class AdminEventModerationView(APIView):
         if category_filter:
             events = events.filter(category__icontains=category_filter)
 
+        events = events.select_related("org", "created_by")
         events = events.order_by("-created_at")
-        paginator = EventPagination()
+        paginator = self.pagination_class()
         page = paginator.paginate_queryset(events, request)
+        serializer = AdminEventSerializer(page or events, many=True)
         if page is not None:
-            return paginator.get_paginated_response(AdminEventSerializer(page, many=True).data)
-        return Response(AdminEventSerializer(events, many=True).data)
+            return paginator.get_paginated_response(serializer.data)
+        return Response(serializer.data)
 
 
 class AdminEventDetailView(APIView):

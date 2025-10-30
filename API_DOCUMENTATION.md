@@ -453,6 +453,50 @@ Retrieve organizers awaiting approval. Requires admin authentication.
 }
 ```
 
+### Moderate Events
+**GET** `/api/admin/events/`
+
+Browse all events (any status) for moderation. Requires admin authentication.
+
+**Query Parameters:**
+- `page` *(optional)* — page number (default: 1)
+- `page_size` *(optional)* — results per page (default: 10)
+- `status` *(optional)* — filter by event status (`draft`, `pending`, `approved`, `rejected`)
+- `organization` *(optional)* — case-insensitive match on organization name
+- `category` *(optional)* — case-insensitive match on event category
+- `search` *(optional)* — search in title, description, location, or creator email
+
+**Response (200):**
+```json
+{
+  "count": 12,
+  "next": "http://127.0.0.1:8000/api/admin/events/?page=2",
+  "previous": null,
+  "results": [
+    {
+      "id": 48,
+      "title": "Tech Career Fair",
+      "description": "Company booths and networking",
+      "category": "Career",
+      "location": "Hall H",
+      "start_at": "2025-11-03T16:00:00Z",
+      "end_at": "2025-11-03T20:00:00Z",
+      "capacity": 300,
+      "remaining_capacity": 125,
+      "ticket_type": "free",
+      "status": "pending",
+      "admin_comment": null,
+      "org": 5,
+      "org_name": "Engineering Society",
+      "created_by": 9,
+      "created_by_name": "Alex Organizer",
+      "created_by_email": "alex@example.com",
+      "created_at": "2025-10-20T14:22:10Z"
+    }
+  ]
+}
+```
+
 ---
 
 ## 📊 HTTP Status Codes

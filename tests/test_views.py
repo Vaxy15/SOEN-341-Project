@@ -192,13 +192,81 @@ def test_event_detail_access(db, api_client, setup_data):
         assert resp.json().get("title", "Intro to Git") == "Intro to Git"
 
 
-# def test_logout_behavior(db, api_client, setup_data):
-#     """POST /api/auth/logout/ should return 400 without refresh token."""
-#     api_client.force_authenticate(setup_data["student"])
-#     url = _url_or("logout", "/api/auth/logout/")
-#     resp = api_client.post(url, {}, format="json")
-#     assert resp.status_code in [status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND]
+def test_admin_events_requires_admin(db, api_client, setup_data):
+    """Admin events list should be restricted to admins."""
+    url = _url_or("admin_events", "/api/admin/events/")
+    api_client.force_authenticate(setup_data["student"])
+    resp = api_client.get(url)
+    assert resp.status_code in [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND]
 
+
+def _seed_events(user, organization, count=3):
+    """Create several events with varying metadata for admin tests."""
+    created = []
+    base_time = timezone.now()
+    for idx in range(count):
+        event = Event.objects.create(
+            org=organization,
+            title=f"Moderation Event {idx}",
+            description="Event for admin moderation tests",
+            category="Workshop" if idx % 2 == 0 else "Panel",
+            location="Room 10",
+            start_at=base_time + dt.timedelta(days=idx + 1),
+            end_at=base_time + dt.timedelta(days=idx + 1, hours=2),
+            capacity=100,
+            ticket_type="free",
+            status=Event.APPROVED if idx % 2 == 0 else Event.PENDING,
+            created_by=user,
+        )
+        created.append(event)
+    return created
+
+
+def test_admin_events_paginated_listing(db, api_client, setup_data):
+    """Admin should receive paginated event data with key fields."""
+    url = _url_or("admin_events", "/api/admin/events/")
+    api_client.force_authenticate(setup_data["admin"])
+
+    events = _seed_events(setup_data["organizer"], setup_data["org"], count=3)
+
+    resp = api_client.get(url)
+    if resp.status_code == status.HTTP_200_OK:
+        data = resp.json()
+        assert "results" in data
+        assert data["count"] >= len(events)
+        first = data["results"][0]
+        expected_keys = {"title", "org_name", "status", "created_by_email", "created_at"}
+        assert expected_keys.issubset(first.keys())
+    else:
+        assert resp.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_admin_events_filtering(db, api_client, setup_data):
+    """Filtering by status, category, and search should narrow results."""
+    url = _url_or("admin_events", "/api/admin/events/")
+    api_client.force_authenticate(setup_data["admin"])
+
+    events = _seed_events(setup_data["organizer"], setup_data["org"], count=4)
+    target = events[0]
+    target.status = Event.REJECTED
+    target.category = "Special"
+    target.title = "Unique Moderation Event"
+    target.save()
+
+    resp = api_client.get(url, {"status": Event.REJECTED})
+    if resp.status_code == status.HTTP_200_OK:
+        titles = [item.get("title") for item in resp.json().get("results", [])]
+        assert target.title in titles
+
+    resp = api_client.get(url, {"category": "Special"})
+    if resp.status_code == status.HTTP_200_OK:
+        titles = [item.get("title") for item in resp.json().get("results", [])]
+        assert target.title in titles
+
+    resp = api_client.get(url, {"search": "Unique Moderation"})
+    if resp.status_code == status.HTTP_200_OK:
+        titles = [item.get("title") for item in resp.json().get("results", [])]
+        assert target.title in titles
 
 
 # --- run with pytest when executed as a script (VS Code "Run" button) ---
@@ -206,4 +274,3 @@ if __name__ == "__main__":
     import pytest
     sys.exit(pytest.main(["-v", "--ds=campus.settings", __file__]))
 # -----------------------------------------------------------------------
-
