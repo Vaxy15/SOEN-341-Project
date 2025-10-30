@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}Discover Events{% endblock %}
+
+{% block head_extra %}
+  <style>
+    :root {
+      --bg: #f7f7fb;
+      --panel: #fff;
+      --text: #111;
+      --muted: #666;
+      --border: #e6e6ef;
+      --primary: #3b82f6;
+      --primary-ghost: #e8f0fe;
+    }
+    * { box-sizing: border-box }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    h1 { font-size: 28px; margin: 0 }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 6px 18px rgba(20,20,45,.05);
+    }
+    .filters { position: sticky; top: 64px; z-index: 3; padding: 12px; margin-bottom: 16px; }
+    .filters form { display: grid; gap: 10px; }
+    .row { display: grid; grid-template-columns: repeat(6, minmax(120px, 1fr)); gap: 8px; }
+    .row input, .row select {
+      height: 38px; padding: 8px 10px; border: 1px solid var(--border);
+      border-radius: 10px; background: #fff;
+    }
+    .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px;
+      border-radius: 10px; border: 1px solid var(--border); background: #fff;
+      cursor: pointer; text-decoration: none; color: inherit
+    }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary) }
+    .btn-ghost { background: var(--primary-ghost); color: #1d4ed8; border-color: transparent }
+    .btn[disabled] { opacity: .45; cursor: not-allowed }
+    .meta { color: var(--muted); font-size: 14px; margin: 8px 0 0 }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+    .event { padding: 16px; }
+    .event h3 { margin: 0 0 6px; font-size: 18px }
+    .muted { color: var(--muted) }
+    .when { margin: 8px 0 }
+    .pill {
+      display: inline-block; background: #f1f5ff; color: #2648b3; padding: 2px 8px;
+      border-radius: 999px; font-size: 12px; border: 1px solid #dfe6ff
+    }
+    .pagination {
+      margin: 18px 0; display: flex; align-items: center; gap: 8px;
+      flex-wrap: wrap; justify-content: center
+    }
+    .page-btn {
+      padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
+      background: #fff; text-decoration: none; color: inherit
+    }
+    .page-btn.active { background: var(--primary); border-color: var(--primary); color: #fff }
+    .page-btn[aria-disabled="true"] { opacity: .5; pointer-events: none }
+    .goto { display: flex; gap: 8px; align-items: center }
+    .empty { padding: 24px; text-align: center; color: var(--muted) }
+  </style>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('filters-form');
+      if (form) {
+        form.querySelectorAll('input,select').forEach(el => {
+          el.addEventListener('change', () => form.submit());
+        });
+      }
+      const gotoForm = document.getElementById('goto-form');
+      if (gotoForm) {
+        gotoForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const page = gotoForm.querySelector('input[name="page"]').value || 1;
+          const params = new URLSearchParams(new FormData(document.getElementById('filters-form')));
+          params.set('page', page);
+          window.location.search = params.toString();
+        });
+      }
+    });
+  </script>
+{% endblock %}
+
+{% block content %}
+  <div class="topbar">
+    <h1>Discover Events</h1>
+    <div class="meta">
+      {% if page_obj.paginator.count %}
+        Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}
+      {% else %}
+        No matching events
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <section class="card filters">
+    <form id="filters-form" method="get">
+      <div class="row">
+        <input type="search" name="search" placeholder="Search title / description / location" value="{{ filters.search }}">
+        <input type="text" name="category" placeholder="Category" value="{{ filters.category }}">
+        <input type="text" name="organization" placeholder="Organization" value="{{ filters.organization }}">
+        <input type="datetime-local" name="date_from" value="{{ filters.date_from }}">
+        <input type="datetime-local" name="date_to" value="{{ filters.date_to }}">
+        <select name="page_size" title="Page size">
+          {% for n in page_sizes %}
+            <option value="{{ n }}" {% if filters.page_size == n %}selected{% endif %}>Page: {{ n }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="actions" style="margin-top:8px;">
+        <button class="btn btn-primary" type="submit">Apply</button>
+        <a class="btn btn-ghost" href="{% url 'event_list_page' %}">Reset</a>
+      </div>
+    </form>
+  </section>
+
+  <!-- Event cards -->
+  {% if page_obj.object_list %}
+    <section class="grid">
+      {% for e in page_obj.object_list %}
+        <article class="card event">
+          <h3>{{ e.title }}</h3>
+          <div class="muted">
+            {{ e.org.name }} • <span class="pill">{{ e.category|default:"General" }}</span>
+          </div>
+          <div class="when">
+            <strong>When:</strong>
+            {{ e.start_at|date:"M j, Y, P T" }} → {{ e.end_at|date:"M j, Y, P T" }}
+          </div>
+          <div><strong>Where:</strong> {{ e.location }}</div>
+          <div class="muted" style="margin-top:6px;">
+            <strong>Remaining:</strong> {{ e.remaining_capacity }}
+          <div class="muted" style="margin-top:6px;">
+</div>
+
+        <div style="margin-top:10px;">
+          {% if request.user.is_authenticated %}
+            {% if e.id in my_ticket_ids %}
+              <button class="btn" disabled>Claimed</button>
+            {% elif e.remaining_capacity|default:0 > 0 %}
+              <form method="post" action="{% url 'claim_ticket' e.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button class="btn btn-primary" type="submit">Claim ticket</button>
+              </form>
+            {% else %}
+              <button class="btn" disabled>Full</button>
+            {% endif %}
+          {% else %}
+            <a class="btn" href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}">Sign in to claim</a>
+          {% endif %}
+        </div>
+
+        </article>
+      {% endfor %}
+    </section>
+  {% else %}
+    <div class="card empty">No events match your filters. Try adjusting the search or dates.</div>
+  {% endif %}
+
+  <!-- Pagination -->
+  {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="pagination" aria-label="Pagination">
+      <a class="page-btn"
+         aria-disabled="{% if not page_obj.has_previous %}true{% else %}false{% endif %}"
+         href="?page=1&search={{ filters.search }}&category={{ filters.category }}&organization={{ filters.organization }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page_size={{ filters.page_size }}">« First</a>
+
+      <a class="page-btn"
+         aria-disabled="{% if not page_obj.has_previous %}true{% else %}false{% endif %}"
+         href="?page={% if page_obj.has_previous %}{{ page_obj.previous_page_number }}{% else %}1{% endif %}&search={{ filters.search }}&category={{ filters.category }}&organization={{ filters.organization }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page_size={{ filters.page_size }}">‹ Prev</a>
+
+      {% for num in page_obj.paginator.page_range %}
+        {% if num == page_obj.number %}
+          <a class="page-btn active"
+             href="?page={{ num }}&search={{ filters.search }}&category={{ filters.category }}&organization={{ filters.organization }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page_size={{ filters.page_size }}">{{ num }}</a>
+
+        {% elif num == 1 or num == page_obj.paginator.num_pages or num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+          <a class="page-btn"
+             href="?page={{ num }}&search={{ filters.search }}&category={{ filters.category }}&organization={{ filters.organization }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page_size={{ filters.page_size }}">{{ num }}</a>
+
+        {% elif num == 2 and page_obj.number > 4 %}
+          <span class="muted">…</span>
+
+        {% elif num == page_obj.paginator.num_pages|add:"-1" and page_obj.number < page_obj.paginator.num_pages|add:"-3" %}
+          <span class="muted">…</span>
+        {% endif %}
+      {% endfor %}
+
+      <a class="page-btn"
+         aria-disabled="{% if not page_obj.has_next %}true{% else %}false{% endif %}"
+         href="?page={% if page_obj.has_next %}{{ page_obj.next_page_number }}{% else %}{{ page_obj.paginator.num_pages }}{% endif %}&search={{ filters.search }}&category={{ filters.category }}&organization={{ filters.organization }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page_size={{ filters.page_size }}">Next ›</a>
+
+      <a class="page-btn"
+         aria-disabled="{% if not page_obj.has_next %}true{% else %}false{% endif %}"
+         href="?page={{ page_obj.paginator.num_pages }}&search={{ filters.search }}&category={{ filters.category }}&organization={{ filters.organization }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page_size={{ filters.page_size }}">Last »</a>
+
+      <form id="goto-form" class="goto" style="margin-left:8px;">
+        <label class="muted">Go to:
+          <input type="number" min="1" max="{{ page_obj.paginator.num_pages }}" name="page"
+                 value="{{ page_obj.number }}"
+                 style="width:70px; height:34px; padding:6px 8px; border:1px solid var(--border); border-radius:8px;">
+        </label>
+        <button class="btn" type="submit">Go</button>
+      </form>
+    </nav>
+  {% endif %}
+{% endblock %}
