@@ -29,6 +29,8 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from .calendar_utils import generate_ics_file, generate_google_calendar_link
+
 from .models import User, Organization, Event, Ticket
 from .serializers import (
     CustomTokenObtainPairSerializer,
@@ -655,11 +657,39 @@ class AdminUserStatusView(APIView):
 class AdminPendingOrganizersView(APIView):
     permission_classes = [IsAuthenticated]
 
+    pagination_class = EventPagination
+
     def get(self, request):
         if not request.user.is_admin():
-            return Response({"error": "Only administrators can view pending organizers"}, status=status.HTTP_403_FORBIDDEN)
-        pending_organizers = User.objects.filter(role=User.ROLE_ORGANIZER, is_verified=False).order_by("-created_at")
-        return Response({"pending_organizers": AdminUserSerializer(pending_organizers, many=True).data, "count": pending_organizers.count()})
+            return Response(
+                {"error": "Only administrators can view pending organizers"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Get unverified organizers
+        pending_organizers = User.objects.filter(
+            role=User.ROLE_ORGANIZER, is_verified=False
+        ).order_by("-created_at")
+
+        # Apply search filter
+        search = request.query_params.get("search")
+        if search:
+            pending_organizers = pending_organizers.filter(
+                Q(email__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+            )
+
+        # Paginate results
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(pending_organizers, request)
+
+        serializer = AdminUserSerializer(page or pending_organizers, many=True)
+
+        if page is not None:
+            return paginator.get_paginated_response(serializer.data)
+
+        return Response(serializer.data)
 
 
 class AdminEventModerationView(APIView):
@@ -996,3 +1026,44 @@ def calendar_events_feed(request):
             },
         })
     return JsonResponse(events, safe=False)
+
+
+class EventCalendarView(APIView):
+    """View to generate .ics file for an event."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        """Download .ics file for an event."""
+        try:
+            event = Event.objects.get(pk=pk)
+        except Event.DoesNotExist:
+            return Response(
+                {"error": "Event not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Generate and return .ics file
+        return generate_ics_file(event, request)
+
+
+class EventGoogleCalendarView(APIView):
+    """View to get Google Calendar link for an event."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        """Get Google Calendar link for an event."""
+        try:
+            event = Event.objects.get(pk=pk)
+        except Event.DoesNotExist:
+            return Response(
+                {"error": "Event not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Generate Google Calendar link
+        google_link = generate_google_calendar_link(event, request)
+        
+        return Response({
+            "google_calendar_link": google_link,
+            "message": "Open this link in a new tab to add the event to your Google Calendar"
+        })

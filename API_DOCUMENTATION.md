@@ -414,6 +414,45 @@ Cancel a ticket (Ticket owner or Admin only).
 - Can validate any ticket
 - Can view all tickets
 
+### List Pending Organizer Accounts
+**GET** `/api/admin/pending-organizers/`
+
+Retrieve organizers awaiting approval. Requires admin authentication.
+
+**Query Parameters:**
+- `page` *(optional)* — page number (default: 1)
+- `page_size` *(optional)* — results per page (default: 10)
+- `search` *(optional)* — filter by organizer email, first name, or last name
+
+**Response (200):**
+```json
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 12,
+      "email": "organizer@example.com",
+      "first_name": "Alex",
+      "last_name": "Doe",
+      "role": "organizer",
+      "student_id": "",
+      "phone_number": "",
+      "date_of_birth": null,
+      "is_verified": false,
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "created_at": "2024-03-10T15:45:00Z",
+      "updated_at": "2024-03-10T15:45:00Z",
+      "last_login": null,
+      "status": "pending"
+    }
+  ]
+}
+```
+
 ---
 
 ## 📊 HTTP Status Codes
