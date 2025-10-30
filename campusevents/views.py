@@ -29,8 +29,6 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .calendar_utils import generate_ics_file, generate_google_calendar_link
-
 from .models import User, Organization, Event, Ticket
 from .serializers import (
     CustomTokenObtainPairSerializer,
@@ -1028,42 +1026,18 @@ def calendar_events_feed(request):
     return JsonResponse(events, safe=False)
 
 
-class EventCalendarView(APIView):
-    """View to generate .ics file for an event."""
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, pk):
-        """Download .ics file for an event."""
-        try:
-            event = Event.objects.get(pk=pk)
-        except Event.DoesNotExist:
-            return Response(
-                {"error": "Event not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        # Generate and return .ics file
-        return generate_ics_file(event, request)
+from django.utils import timezone
+from django.shortcuts import render
+from .models import Ticket
 
 
-class EventGoogleCalendarView(APIView):
-    """View to get Google Calendar link for an event."""
-    permission_classes = [IsAuthenticated]
+def my_events(request):
+    tickets = Ticket.objects.filter(user=request.user).select_related('event')
+    now = timezone.now()
 
-    def get(self, request, pk):
-        """Get Google Calendar link for an event."""
-        try:
-            event = Event.objects.get(pk=pk)
-        except Event.DoesNotExist:
-            return Response(
-                {"error": "Event not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        # Generate Google Calendar link
-        google_link = generate_google_calendar_link(event, request)
-        
-        return Response({
-            "google_calendar_link": google_link,
-            "message": "Open this link in a new tab to add the event to your Google Calendar"
-        })
+    # Update ticket statuses dynamically
+    for t in tickets:
+        if t.event.end_at < now and t.status == "issued":
+            t.status = "expired"  # temporary (not saved to DB)
+
+    return render(request, "my_events.html", {"tickets": tickets})

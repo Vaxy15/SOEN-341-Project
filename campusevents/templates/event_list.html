@@ -137,37 +137,21 @@
 </div>
 
         <div style="margin-top:10px;">
-  {% if request.user.is_authenticated %}
-    {% if e.id in my_ticket_ids %}
-      <button class="btn" disabled>Claimed</button>
-
-    {% elif e.remaining_capacity|default:0 > 0 %}
-      {% if e.ticket_type == "paid" %}
-        <!-- PAID: open mock payment modal -->
-        <button
-          class="btn btn-primary js-pay-btn"
-          type="button"
-          data-event-id="{{ e.id }}"
-          data-event-title="{{ e.title|escape }}"
-        >
-          Pay
-        </button>
-      {% else %}
-        <!-- FREE: submit directly -->
-        <form method="post" action="{% url 'claim_ticket' e.id %}" style="display:inline;">
-          {% csrf_token %}
-          <button class="btn btn-primary" type="submit">Claim ticket</button>
-        </form>
-      {% endif %}
-
-    {% else %}
-      <button class="btn" disabled>Full</button>
-    {% endif %}
-
-  {% else %}
-    <a class="btn" href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}">Sign in to claim</a>
-  {% endif %}
-</div>
+          {% if request.user.is_authenticated %}
+            {% if e.id in my_ticket_ids %}
+              <button class="btn" disabled>Claimed</button>
+            {% elif e.remaining_capacity|default:0 > 0 %}
+              <form method="post" action="{% url 'claim_ticket' e.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button class="btn btn-primary" type="submit">Claim ticket</button>
+              </form>
+            {% else %}
+              <button class="btn" disabled>Full</button>
+            {% endif %}
+          {% else %}
+            <a class="btn" href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}">Sign in to claim</a>
+          {% endif %}
+        </div>
 
         </article>
       {% endfor %}
@@ -222,111 +206,4 @@
       </form>
     </nav>
   {% endif %}
-  <!-- Payment Modal (global) -->
-<style>
-  .modal-backdrop {
-    position: fixed; inset: 0; background: rgba(0,0,0,.45);
-    display: none; align-items: center; justify-content: center; z-index: 50;
-  }
-  .modal-backdrop[aria-hidden="false"] { display: flex; }
-  .modal {
-    width: min(520px, 92vw); background: #fff; border-radius: 16px;
-    border: 1px solid var(--border); box-shadow: 0 12px 30px rgba(0,0,0,.15);
-    overflow: hidden;
-  }
-  .modal header, .modal footer { padding: 14px 16px; }
-  .modal header { border-bottom: 1px solid var(--border); }
-  .modal footer { border-top: 1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
-  .modal main { padding: 16px; display: grid; gap: 12px; }
-  .field { display: grid; gap: 6px; }
-  .field input { height: 38px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; }
-</style>
-
-<div class="modal-backdrop" id="payModal" aria-hidden="true" role="dialog" aria-modal="true">
-  <div class="modal" role="document" aria-labelledby="payModalTitle">
-    <header>
-      <h3 id="payModalTitle" style="margin:0;font-size:18px;">Mock payment</h3>
-      <div class="muted" id="payModalSubtitle">Event: —</div>
-    </header>
-    <main>
-      <!-- purely mock fields -->
-      <div class="field">
-        <label>Card number</label>
-        <input inputmode="numeric" autocomplete="off" placeholder="4242 4242 4242 4242">
-      </div>
-      <div class="field" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <div>
-          <label>Expiry</label>
-          <input placeholder="MM/YY">
-        </div>
-        <div>
-          <label>CVC</label>
-          <input inputmode="numeric" placeholder="123">
-        </div>
-      </div>
-      <div class="muted">This is a mock payment. No real charge will occur.</div>
-    </main>
-    <footer>
-      <button class="btn" type="button" id="payCancelBtn">Cancel</button>
-      <button class="btn btn-primary" type="button" id="payConfirmBtn">Confirm & Issue</button>
-    </footer>
-  </div>
-</div>
-
-<!-- One global hidden form that we dynamically point at /events/<id>/claim/ -->
-<form id="claimForm" method="post" style="display:none;">
-  {% csrf_token %}
-</form>
-
-<script>
-(function () {
-  const modal = document.getElementById('payModal');
-  const subtitle = document.getElementById('payModalSubtitle');
-  const confirmBtn = document.getElementById('payConfirmBtn');
-  const cancelBtn = document.getElementById('payCancelBtn');
-  const claimForm = document.getElementById('claimForm');
-
-  // We need a URL template we can swap the ID into.
-  // This renders like /events/0/claim/ then we replace '/0/' with '/<id>/'.
-  const claimUrlTemplate = "{% url 'claim_ticket' 0 %}";
-
-  let currentEventId = null;
-
-  // open modal from any "Pay & claim" button
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('.js-pay-btn');
-    if (!btn) return;
-
-    currentEventId = btn.dataset.eventId;
-    const title = btn.dataset.eventTitle || 'Selected event';
-    subtitle.textContent = 'Event: ' + title;
-
-    modal.setAttribute('aria-hidden', 'false');
-  });
-
-  // close helpers
-  const closeModal = () => modal.setAttribute('aria-hidden', 'true');
-  cancelBtn.addEventListener('click', closeModal);
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) closeModal(); // click backdrop
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeModal();
-  });
-
-  // confirm → POST to claim_ticket for the chosen event
-  confirmBtn.addEventListener('click', () => {
-    if (!currentEventId) return;
-
-    // build the action URL by swapping the 0 with the real id
-    const action = claimUrlTemplate.replace(/\/0(\/|$)/, `/${currentEventId}$1`);
-    claimForm.setAttribute('action', action);
-
-    // submit & close
-    closeModal();
-    claimForm.submit();
-  });
-})();
-</script>
-
 {% endblock %}
