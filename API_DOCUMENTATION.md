@@ -453,6 +453,7 @@ Retrieve organizers awaiting approval. Requires admin authentication.
 }
 ```
 
+<<<<<<< HEAD
 ### Moderate Events
 **GET** `/api/admin/events/`
 
@@ -497,6 +498,8 @@ Browse all events (any status) for moderation. Requires admin authentication.
 }
 ```
 
+=======
+>>>>>>> 4a62580423ab393a6eea665b11199dd95af7be4f
 ---
 
 ## 📊 HTTP Status Codes

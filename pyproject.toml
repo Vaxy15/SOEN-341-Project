@@ -18,7 +18,12 @@ dependencies = [
   "djangorestframework-simplejwt>=5.3",
   "django-filter>=24.3",
   "django-cors-headers>=4.4",
+<<<<<<< HEAD
   "qrcode[pil]>=7.4"
+=======
+  "qrcode[pil]>=7.4",
+  "icalendar>=5.0"
+>>>>>>> 4a62580423ab393a6eea665b11199dd95af7be4f
 ]
 
 [project.optional-dependencies]
