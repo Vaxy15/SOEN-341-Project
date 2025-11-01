@@ -50,4 +50,8 @@ urlpatterns = [
     path("api/admin/events/<int:pk>/approve/", views.AdminEventApprovalView.as_view(), name="admin_event_approval"),
     path("api/admin/events/<int:pk>/status/", views.AdminEventStatusView.as_view(), name="admin_event_status"),
     path("api/admin/pending-events/", views.AdminPendingEventsView.as_view(), name="admin_pending_events"),
+
+    # Alias routes for approval (added to match docs / alternate clients)
+    path("api/admin/events/<int:pk>/approval/", views.AdminEventApprovalView.as_view(), name="admin_event_approval_api_alias"),
+    path("admin/events/<int:pk>/approval/", views.AdminEventApprovalView.as_view(), name="admin_event_approval_alias"),
 ]
