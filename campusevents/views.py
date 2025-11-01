@@ -1027,3 +1027,19 @@ def calendar_events_feed(request):
             },
         })
     return JsonResponse(events, safe=False)
+
+
+@login_required(login_url='login')
+def admin_events_dashboard(request):
+    """
+    Simple HTML dashboard for administrators to browse and filter events.
+    This page uses the API endpoint `/api/admin/events/` (or `/admin/events/` alias)
+    and requires the user to be an admin.
+    """
+    if not getattr(request.user, 'is_admin', lambda: False)():
+        # If user is not an admin, redirect to home or show 403
+        from django.http import HttpResponseForbidden
+
+        return HttpResponseForbidden("Only administrators can view this page")
+
+    return render(request, "admin_events_dashboard.html", {})

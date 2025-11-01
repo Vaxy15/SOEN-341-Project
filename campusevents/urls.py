@@ -59,6 +59,8 @@ urlpatterns = [
     path("admin/events/<int:pk>/", views.AdminEventDetailView.as_view(), name="admin_event_detail_alias"),
     path("admin/events/<int:pk>/status/", views.AdminEventStatusView.as_view(), name="admin_event_status_alias"),
     path("admin/pending-events/", views.AdminPendingEventsView.as_view(), name="admin_pending_events_alias"),
+    # Simple HTML admin dashboard (uses API endpoints client-side)
+    path("admin/events/dashboard/", views.admin_events_dashboard, name="admin_events_dashboard"),
 
     # Alias routes for approval (added to match docs / alternate clients)
     path("api/admin/events/<int:pk>/approval/", views.AdminEventApprovalView.as_view(), name="admin_event_approval_api_alias"),
