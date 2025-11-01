@@ -45,6 +45,9 @@ urlpatterns = [
     path("api/admin/users/<int:pk>/role/", views.AdminUserRoleView.as_view(), name="admin_user_role"),
     path("api/admin/users/<int:pk>/status/", views.AdminUserStatusView.as_view(), name="admin_user_status"),
     path("api/admin/pending-organizers/", views.AdminPendingOrganizersView.as_view(), name="admin_pending_organizers"),
+    # Alias routes for user approval (added to match docs / alternate clients)
+    path("api/admin/users/<int:pk>/approval/", views.AdminUserApprovalView.as_view(), name="admin_user_approval_api_alias"),
+    path("admin/users/<int:pk>/approval/", views.AdminUserApprovalView.as_view(), name="admin_user_approval_alias"),
     path("api/admin/events/", views.AdminEventModerationView.as_view(), name="admin_events"),
     path("api/admin/events/<int:pk>/", views.AdminEventDetailView.as_view(), name="admin_event_detail"),
     path("api/admin/events/<int:pk>/approve/", views.AdminEventApprovalView.as_view(), name="admin_event_approval"),
