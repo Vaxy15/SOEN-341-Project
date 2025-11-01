@@ -1043,3 +1043,23 @@ def admin_events_dashboard(request):
         return HttpResponseForbidden("Only administrators can view this page")
 
     return render(request, "admin_events_dashboard.html", {})
+
+
+@login_required(login_url='login')
+def admin_users_dashboard(request):
+    """
+    Simple HTML page for administrators to list users and perform basic actions:
+    - Change role (student / organizer / admin)
+    - Toggle active status
+
+    This uses simple HTML forms that POST to the existing API endpoints (which
+    are protected by admin checks). We render a small user list server-side to
+    keep the page very simple and avoid client-side JS.
+    """
+    if not getattr(request.user, 'is_admin', lambda: False)():
+        from django.http import HttpResponseForbidden
+
+        return HttpResponseForbidden("Only administrators can view this page")
+
+    users = User.objects.all().order_by('-created_at')[:200]
+    return render(request, "admin_users_dashboard.html", {"users": users})
