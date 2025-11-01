@@ -1,9 +1,5 @@
 {% extends "base.html" %}
 {% block title %}My Events{% endblock %}
-<<<<<<< HEAD
-=======
-{% load tz %}
->>>>>>> 4a62580423ab393a6eea665b11199dd95af7be4f
 
 {% block content %}
 <div style="max-width: 900px; margin: 0 auto; padding: 20px;">
@@ -14,8 +10,10 @@
       {% for t in tickets %}
         <div style="border: 1px solid #ddd; border-radius: 12px; padding: 16px; background: #fff; box-shadow: 0 3px 6px rgba(0,0,0,0.05);">
           <h3 style="margin-top: 0;">{{ t.event.title }}</h3>
-          <p style="color:#666;">{{ t.event.location }}<br>
-            {{ t.event.start_at|date:"M j, Y, P T" }} → {{ t.event.end_at|date:"M j, Y, P T" }}</p>
+          <p style="color:#666;">
+            {{ t.event.location }}<br>
+            {{ t.event.start_at|date:"M j, Y, P T" }} → {{ t.event.end_at|date:"M j, Y, P T" }}
+          </p>
 
           <p><strong>Status:</strong>
             {% if t.status == "issued" %}
@@ -30,18 +28,12 @@
           </p>
 
           {% if t.qr_code %}
-<<<<<<< HEAD
-            <div style="text-align:center; margin-top:12px;">
-              <img src="{{ t.qr_code.url }}" alt="QR Code for {{ t.ticket_id }}" style="width:160px; height:160px;">
-              <p style="font-size:12px; color:#888;">Ticket ID: {{ t.ticket_id }}</p>
-            </div>
-=======
-          {% if t.event.status != "approved" or t.status == "used" or t.status == "cancelled" or t.status == "expired" or t.event.end_at < now %}
-  <div style="text-align:center; margin-top:12px; opacity:0.6;">
+            {% if t.event.status != "approved" or t.status == "used" or t.status == "cancelled" or t.status == "expired" or t.event.end_at < now %}
+              <div style="text-align:center; margin-top:12px; opacity:0.6;">
                 <img src="{{ t.qr_code.url }}" alt="QR Code for {{ t.ticket_id }}" style="width:160px; height:160px; filter:grayscale(100%);">
                 <p style="color:red; font-weight:bold;">⚠️ This ticket is invalid</p>
                 <p style="font-size:12px; color:#888;">Reason:
-                    {% if t.event.status != "approved" %} Event not approved
+                  {% if t.event.status != "approved" %} Event not approved
                   {% elif t.status == "used" %} Already used
                   {% elif t.status == "cancelled" %} Cancelled
                   {% elif t.status == "expired" or t.event.end_at < now %} Expired
@@ -54,7 +46,7 @@
                 <img src="{{ t.qr_code.url }}"
                      alt="QR Code for {{ t.ticket_id }}"
                      style="width:160px; height:160px; cursor:pointer; border-radius:8px; transition:transform 0.2s;"
-                     onclick="openQRModal('{{ t.qr_code.url }}', '{{ t.ticket_id }}')">
+                     onclick="openQRModal('{{ t.qr_code.url }}')">
                 <p style="font-size:12px; color:#888;">Ticket ID: {{ t.ticket_id }}</p>
 
                 <div style="margin-top:8px;">
@@ -62,14 +54,13 @@
                      style="background:#007bff; color:white; padding:6px 10px; border-radius:6px; text-decoration:none; margin-right:5px;">
                      ⬇️ Download
                   </a>
-                  <button onclick="openQRModal('{{ t.qr_code.url }}', '{{ t.ticket_id }}')"
+                  <button onclick="openQRModal('{{ t.qr_code.url }}')"
                           style="background:#28a745; color:white; padding:6px 10px; border:none; border-radius:6px; cursor:pointer;">
                      🔍 View Fullscreen
                   </button>
                 </div>
               </div>
             {% endif %}
->>>>>>> 4a62580423ab393a6eea665b11199dd95af7be4f
           {% else %}
             <p style="color:#888;">QR code not available.</p>
           {% endif %}
@@ -83,9 +74,6 @@
     </div>
   {% endif %}
 </div>
-<<<<<<< HEAD
-{% endblock %}
-=======
 
 <!-- Fullscreen QR Modal -->
 <div id="qrModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center;">
@@ -102,4 +90,3 @@ function openQRModal(url) {
 }
 </script>
 {% endblock %}
->>>>>>> 4a62580423ab393a6eea665b11199dd95af7be4f

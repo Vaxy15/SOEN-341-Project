@@ -1019,6 +1019,7 @@ def my_events(request):
 
     context = {
         "tickets": tickets,
+        "now": timezone.now(),
     }
     return render(request, "my_events.html", context)
 def calendar_page(request):

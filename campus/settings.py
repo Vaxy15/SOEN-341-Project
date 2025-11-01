@@ -57,7 +57,6 @@ TEMPLATES = [
             "context_processors": [
                 "django.template.context_processors.debug",
                 "django.template.context_processors.request",
-                "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "django.template.context_processors.static",
@@ -175,13 +174,6 @@ CORS_ALLOWED_HEADERS = [
     'x-requested-with',
 ]
 
-# Redirect after successful login
-LOGIN_REDIRECT_URL = '/events/create/'
-
-# Redirect after logout
-LOGOUT_REDIRECT_URL = '/login/'  # go back to login page after logout
-
-
-LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'event_list_page'   
-LOGOUT_REDIRECT_URL = '/' 
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "event_list_page"   # or "/events/create/"
+LOGOUT_REDIRECT_URL = "/"
