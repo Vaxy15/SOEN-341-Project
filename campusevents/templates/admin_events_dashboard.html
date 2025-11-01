@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin — Event Moderation</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;color:#111;margin:20px}
+    .controls{display:flex;gap:8px;margin-bottom:12px}
+    .card{border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:8px}
+    .card h3{margin:0 0 6px}
+    .meta{font-size:0.9rem;color:#555}
+    .pagination{margin-top:12px}
+    .btn{padding:6px 10px;border-radius:4px;border:1px solid #bbb;background:#f7f7f7;cursor:pointer}
+  </style>
+</head>
+<body>
+  <h1>Admin — Event Moderation</h1>
+  <div class="controls">
+    <select id="status">
+      <option value="">All statuses</option>
+      <option value="pending">Pending</option>
+      <option value="approved">Approved</option>
+      <option value="rejected">Rejected</option>
+      <option value="draft">Draft</option>
+    </select>
+    <input id="organization" placeholder="Organization" />
+    <input id="category" placeholder="Category" />
+    <input id="search" placeholder="Search title/description/location" style="flex:1" />
+    <button id="filterBtn" class="btn">Filter</button>
+  </div>
+
+  <div id="results"></div>
+  <div class="pagination">
+    <button id="prevBtn" class="btn">Previous</button>
+    <span id="pageInfo" style="margin:0 8px"></span>
+    <button id="nextBtn" class="btn">Next</button>
+  </div>
+
+<script>
+(async function(){
+  const resultsEl = document.getElementById('results');
+  const statusEl = document.getElementById('status');
+  const orgEl = document.getElementById('organization');
+  const catEl = document.getElementById('category');
+  const searchEl = document.getElementById('search');
+  const filterBtn = document.getElementById('filterBtn');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const pageInfo = document.getElementById('pageInfo');
+
+  let page = 1;
+  let pageSize = 10;
+  let lastNext = null;
+  let lastPrevious = null;
+
+  function buildUrl(){
+    const params = new URLSearchParams();
+    if(statusEl.value) params.append('status', statusEl.value);
+    if(orgEl.value) params.append('organization', orgEl.value);
+    if(catEl.value) params.append('category', catEl.value);
+    if(searchEl.value) params.append('search', searchEl.value);
+    params.append('page', page);
+    params.append('page_size', pageSize);
+    return '/api/admin/events/?' + params.toString();
+  }
+
+  async function fetchPage(){
+    resultsEl.innerHTML = '<p>Loading…</p>';
+    try{
+      const res = await fetch(buildUrl(), {credentials: 'same-origin'});
+      if(res.status === 403){
+        resultsEl.innerHTML = '<p>Forbidden — you must be an administrator.</p>';
+        return;
+      }
+      if(!res.ok) throw new Error('Fetch failed: '+res.status);
+      const data = await res.json();
+      renderResults(data);
+    }catch(err){
+      resultsEl.innerHTML = '<p>Error loading events: '+err.message+'</p>';
+    }
+  }
+
+  function renderResults(data){
+    // DRF pagination returns {count, next, previous, results}
+    const items = data.results || data.pending_events || data;
+    lastNext = data.next;
+    lastPrevious = data.previous;
+    pageInfo.textContent = `Page ${page} — ${data.count ?? items.length} items`;
+
+    if(!items || items.length === 0){
+      resultsEl.innerHTML = '<p>No events found.</p>';
+      return;
+    }
+
+    resultsEl.innerHTML = '';
+    items.forEach(e => {
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.innerHTML = `
+        <h3>${escapeHtml(e.title)} <small style="font-size:0.8rem;color:#666">(${escapeHtml(e.status)})</small></h3>
+        <div class="meta">Organization: ${escapeHtml(e.org_name || e.org_name || '')} — Created by: ${escapeHtml(e.created_by_email || '')} — Submitted: ${escapeHtml(e.created_at || '')}</div>
+        <p>${escapeHtml(e.description ? e.description.slice(0, 300) : '')}</p>
+        <div style="margin-top:8px">
+          <a href="/api/admin/events/${e.id}/" target="_blank">View JSON</a>
+          &nbsp;|&nbsp;
+          <a href="/admin/events/${e.id}/attendees/export/" target="_blank">⬇️ Download CSV</a>
+        </div>
+      `;
+      resultsEl.appendChild(div);
+    });
+  }
+
+  function escapeHtml(s){
+    if(!s) return '';
+    return s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+  }
+
+  filterBtn.addEventListener('click', ()=>{ page = 1; fetchPage(); });
+  prevBtn.addEventListener('click', ()=>{ if(lastPrevious){ page = Math.max(1, page-1); fetchPage(); } });
+  nextBtn.addEventListener('click', ()=>{ if(lastNext){ page = page+1; fetchPage(); } });
+
+  // initial load
+  fetchPage();
+})();
+</script>
+</body>
+</html>

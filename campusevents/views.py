@@ -729,6 +729,58 @@ class AdminEventModerationView(APIView):
         return Response(serializer.data)
 
 
+class AdminDashboardStatsView(APIView):
+    """Return small summary statistics for admin dashboards.
+
+    Response JSON:
+    {
+      "total_users": int,
+      "verified_organizers": int,
+      "pending_organizers": int,
+      "pending_events": int,
+      "events_per_month": [ {"month": "YYYY-MM", "count": int}, ... ]  # last 12 months
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.is_admin():
+            return Response({"error": "Only administrators can view dashboard stats"}, status=status.HTTP_403_FORBIDDEN)
+
+        total_users = User.objects.count()
+        verified_organizers = User.objects.filter(role=User.ROLE_ORGANIZER, is_verified=True).count()
+        pending_organizers = User.objects.filter(role=User.ROLE_ORGANIZER, is_verified=False).count()
+        pending_events = Event.objects.filter(status=Event.PENDING).count()
+
+        # events per month for the last 12 months
+        from django.utils import timezone
+        from datetime import timedelta
+        now = timezone.now()
+        events_per_month = []
+        # Build month buckets (YYYY-MM) going back 11 months + current
+        for i in range(11, -1, -1):
+            month_start = (now.replace(day=1) - timedelta(days=now.day - 1))  # first day of current month
+            # shift back i months
+            # naive approach: subtract roughly 30 days * i, then adjust to month start
+            candidate = month_start - timedelta(days=30 * i)
+            ym = candidate.strftime('%Y-%m')
+            # compute first day and next month first day
+            first_of_month = candidate.replace(day=1)
+            # compute next month by adding 32 days then setting day=1
+            next_month = (first_of_month + timedelta(days=32)).replace(day=1)
+            count = Event.objects.filter(created_at__gte=first_of_month, created_at__lt=next_month).count()
+            events_per_month.append({"month": ym, "count": count})
+
+        data = {
+            "total_users": total_users,
+            "verified_organizers": verified_organizers,
+            "pending_organizers": pending_organizers,
+            "pending_events": pending_events,
+            "events_per_month": events_per_month,
+        }
+        return Response(data)
+
+
 class AdminEventDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1027,3 +1079,39 @@ def calendar_events_feed(request):
             },
         })
     return JsonResponse(events, safe=False)
+
+
+@login_required(login_url='login')
+def admin_events_dashboard(request):
+    """
+    Simple HTML dashboard for administrators to browse and filter events.
+    This page uses the API endpoint `/api/admin/events/` (or `/admin/events/` alias)
+    and requires the user to be an admin.
+    """
+    if not getattr(request.user, 'is_admin', lambda: False)():
+        # If user is not an admin, redirect to home or show 403
+        from django.http import HttpResponseForbidden
+
+        return HttpResponseForbidden("Only administrators can view this page")
+
+    return render(request, "admin_events_dashboard.html", {})
+
+
+@login_required(login_url='login')
+def admin_users_dashboard(request):
+    """
+    Simple HTML page for administrators to list users and perform basic actions:
+    - Change role (student / organizer / admin)
+    - Toggle active status
+
+    This uses simple HTML forms that POST to the existing API endpoints (which
+    are protected by admin checks). We render a small user list server-side to
+    keep the page very simple and avoid client-side JS.
+    """
+    if not getattr(request.user, 'is_admin', lambda: False)():
+        from django.http import HttpResponseForbidden
+
+        return HttpResponseForbidden("Only administrators can view this page")
+
+    users = User.objects.all().order_by('-created_at')[:200]
+    return render(request, "admin_users_dashboard.html", {"users": users})

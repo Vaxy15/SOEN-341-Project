@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Admin — Users{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;margin:20px auto;padding:16px">
+  <h1>Admin — User Management</h1>
+  <p style="color:#666">Change roles or toggle active status for users. Actions are protected and require an administrator account.</p>
+
+  <table style="width:100%;border-collapse:collapse;margin-top:12px">
+    <thead>
+      <tr style="text-align:left;border-bottom:1px solid #eee">
+        <th style="padding:8px">Name / Email</th>
+        <th style="padding:8px">Role</th>
+        <th style="padding:8px">Verified / Active</th>
+        <th style="padding:8px">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr style="border-bottom:1px solid #fafafa">
+        <td style="padding:8px">
+          <div style="font-weight:600">{{ u.get_full_name|default:u.email }}</div>
+          <div style="color:#666;font-size:13px">{{ u.email }}</div>
+        </td>
+        <td style="padding:8px">
+          <form method="post" action="/api/admin/users/{{ u.id }}/role/">
+            {% csrf_token %}
+            <select name="role" style="padding:6px 8px;border:1px solid #ddd;border-radius:6px">
+              <option value="student" {% if u.role == 'student' %}selected{% endif %}>Student</option>
+              <option value="organizer" {% if u.role == 'organizer' %}selected{% endif %}>Organizer</option>
+              <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Administrator</option>
+            </select>
+            <button type="submit" class="btn" style="margin-left:8px">Change</button>
+          </form>
+        </td>
+        <td style="padding:8px">
+          <div style="font-size:13px">Verified: {% if u.is_verified %}Yes{% else %}No{% endif %}</div>
+          <div style="font-size:13px">Active: {% if u.is_active %}Yes{% else %}No{% endif %}</div>
+        </td>
+        <td style="padding:8px">
+          <form method="post" action="/api/admin/users/{{ u.id }}/status/" style="display:inline">
+            {% csrf_token %}
+            <input type="hidden" name="is_active" value="{% if u.is_active %}false{% else %}true{% endif %}">
+            <button type="submit" class="btn">{% if u.is_active %}Deactivate{% else %}Activate{% endif %}</button>
+          </form>
+
+          <form method="post" action="/api/admin/users/{{ u.id }}/approve/" style="display:inline;margin-left:6px">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="approve">
+            <button type="submit" class="btn">Approve</button>
+          </form>
+
+          <form method="post" action="/api/admin/users/{{ u.id }}/approve/" style="display:inline;margin-left:6px">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="reject">
+            <button type="submit" class="btn">Reject</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p style="color:#666;margin-top:12px">Note: these forms POST to the API endpoints. Responses are handled server-side and you’ll be redirected back to this page.</p>
+</div>
+{% endblock %}
