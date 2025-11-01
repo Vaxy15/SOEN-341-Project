@@ -101,7 +101,11 @@
         <h3>${escapeHtml(e.title)} <small style="font-size:0.8rem;color:#666">(${escapeHtml(e.status)})</small></h3>
         <div class="meta">Organization: ${escapeHtml(e.org_name || e.org_name || '')} — Created by: ${escapeHtml(e.created_by_email || '')} — Submitted: ${escapeHtml(e.created_at || '')}</div>
         <p>${escapeHtml(e.description ? e.description.slice(0, 300) : '')}</p>
-        <div style="margin-top:8px"><a href="/api/admin/events/${e.id}/" target="_blank">View JSON</a></div>
+        <div style="margin-top:8px">
+          <a href="/api/admin/events/${e.id}/" target="_blank">View JSON</a>
+          &nbsp;|&nbsp;
+          <a href="/admin/events/${e.id}/attendees/export/" target="_blank">⬇️ Download CSV</a>
+        </div>
       `;
       resultsEl.appendChild(div);
     });
