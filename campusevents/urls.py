@@ -75,4 +75,8 @@ urlpatterns = [
     # Alias routes for approval (added to match docs / alternate clients)
     path("api/admin/events/<int:pk>/approval/", views.AdminEventApprovalView.as_view(), name="admin_event_approval_api_alias"),
     path("admin/events/<int:pk>/approval/", views.AdminEventApprovalView.as_view(), name="admin_event_approval_alias"),
+
+    # Admin dashboard stats (counts)
+    path("api/admin/dashboard/", views.AdminDashboardStatsView.as_view(), name="admin_dashboard_stats"),
+    path("admin/dashboard/stats/", views.AdminDashboardStatsView.as_view(), name="admin_dashboard_stats_alias"),
 ]
