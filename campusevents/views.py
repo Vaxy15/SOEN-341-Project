@@ -692,6 +692,7 @@ class AdminPendingOrganizersView(APIView):
 
 class AdminEventModerationView(APIView):
     permission_classes = [IsAuthenticated]
+    pagination_class = EventPagination
 
     def get(self, request):
         if not request.user.is_admin():
@@ -718,12 +719,14 @@ class AdminEventModerationView(APIView):
         if category_filter:
             events = events.filter(category__icontains=category_filter)
 
+        events = events.select_related("org", "created_by")
         events = events.order_by("-created_at")
-        paginator = EventPagination()
+        paginator = self.pagination_class()
         page = paginator.paginate_queryset(events, request)
+        serializer = AdminEventSerializer(page or events, many=True)
         if page is not None:
-            return paginator.get_paginated_response(AdminEventSerializer(page, many=True).data)
-        return Response(AdminEventSerializer(events, many=True).data)
+            return paginator.get_paginated_response(serializer.data)
+        return Response(serializer.data)
 
 
 class AdminEventDetailView(APIView):
@@ -1024,20 +1027,3 @@ def calendar_events_feed(request):
             },
         })
     return JsonResponse(events, safe=False)
-
-
-from django.utils import timezone
-from django.shortcuts import render
-from .models import Ticket
-
-
-def my_events(request):
-    tickets = Ticket.objects.filter(user=request.user).select_related('event')
-    now = timezone.now()
-
-    # Update ticket statuses dynamically
-    for t in tickets:
-        if t.event.end_at < now and t.status == "issued":
-            t.status = "expired"  # temporary (not saved to DB)
-
-    return render(request, "my_events.html", {"tickets": tickets})

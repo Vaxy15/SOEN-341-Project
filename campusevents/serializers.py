@@ -130,9 +130,9 @@ class AdminEventSerializer(serializers.ModelSerializer):
             'id', 'title', 'description', 'category', 'location',
             'start_at', 'end_at', 'capacity', 'remaining_capacity',
             'ticket_type', 'status', 'admin_comment', 'org', 'org_name',
-            'created_by', 'created_by_name', 'created_by_email'
+            'created_by', 'created_by_name', 'created_by_email', 'created_at'
         ]
-        read_only_fields = ['id', 'created_by']
+        read_only_fields = ['id', 'created_by', 'created_at']
 
 
 class EventApprovalSerializer(serializers.Serializer):
