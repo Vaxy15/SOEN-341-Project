@@ -1,6 +1,4 @@
-"""
-Custom permissions for the campusevents app.
-"""
+# campusevents/permissions.py
 
 from rest_framework import permissions
 

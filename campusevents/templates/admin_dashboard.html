@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block head_extra %}
+<style>
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 14px; }
+  .card { background:#fff; border:1px solid #e6e6ef; border-radius:14px; padding:16px; box-shadow:0 6px 18px rgba(20,20,45,.05); }
+  .kpi { font-size: 28px; font-weight: 700; margin-top:6px; }
+  .muted { color:#666; font-size:13px; }
+  .section { margin-top: 18px; }
+</style>
+<!-- Chart.js via CDN (small, no extra build step) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+  <div class="topbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h1 style="margin:0;">Admin Dashboard</h1>
+  </div>
+
+  <section class="grid">
+    <div class="card">
+      <div class="muted">Total Events</div>
+      <div id="kpi-events" class="kpi">—</div>
+    </div>
+    <div class="card">
+      <div class="muted">Tickets Issued</div>
+      <div id="kpi-issued" class="kpi">—</div>
+    </div>
+    <div class="card">
+      <div class="muted">Tickets Checked-in</div>
+      <div id="kpi-used" class="kpi">—</div>
+    </div>
+    <div class="card">
+      <div class="muted">Participation (this month)</div>
+      <div id="kpi-participation" class="kpi">—</div>
+    </div>
+  </section>
+
+  <section class="section card">
+    <h3 style="margin:0 0 10px">Participation Trend (Issued vs Used)</h3>
+    <canvas id="trendChart" height="120"></canvas>
+  </section>
+
+  <section class="section card">
+    <h3 style="margin:0 0 10px">Top Events by Check-ins</h3>
+    <ol id="top-events" style="margin:0;padding-left:18px;"></ol>
+  </section>
+
+  <script>
+    async function loadStats() {
+      const res = await fetch("/dashboard/stats/", { headers: { "Accept": "application/json" }});
+      if (!res.ok) {
+        console.error("Failed to load stats");
+        return;
+      }
+      const data = await res.json();
+
+      // KPIs
+      document.getElementById("kpi-events").textContent = data.totals.total_events;
+      document.getElementById("kpi-issued").textContent = data.totals.tickets_issued_total;
+      document.getElementById("kpi-used").textContent = data.totals.tickets_used_total;
+
+      // Participation this month (last item in tickets_per_month)
+      const tpm = data.tickets_per_month || [];
+      if (tpm.length) {
+        const last = tpm[tpm.length - 1];
+        document.getElementById("kpi-participation").textContent =
+          (last.participation_rate * 100).toFixed(0) + "%";
+      }
+
+      // Chart (Issued vs Used)
+      const labels = tpm.map(d => d.month);
+      const issued = tpm.map(d => d.issued);
+      const used = tpm.map(d => d.used);
+
+      const ctx = document.getElementById("trendChart").getContext("2d");
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Issued', data: issued, tension: 0.25 },
+            { label: 'Used', data: used, tension: 0.25 }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'bottom' } },
+          scales: { y: { beginAtZero: true, ticks: { precision:0 } } }
+        }
+      });
+
+      // Top events by check-ins
+      const list = document.getElementById("top-events");
+      list.innerHTML = "";
+      (data.top_events_by_checkins || []).forEach(ev => {
+        const li = document.createElement("li");
+        li.textContent = `${ev.title} — ${ev.used} check-ins`;
+        list.appendChild(li);
+      });
+    }
+
+    loadStats();
+  </script>
+{% endblock %}

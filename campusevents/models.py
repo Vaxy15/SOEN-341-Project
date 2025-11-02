@@ -1,5 +1,4 @@
-"""Django models for organizations and events."""
-
+# campusevents/models.py
 import io
 import json
 import uuid

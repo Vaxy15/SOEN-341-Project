@@ -1,6 +1,4 @@
-"""
-Calendar utility functions for generating .ics files and Google Calendar links.
-"""
+# campusevents/calendar_utils.py
 
 from datetime import datetime
 import urllib.parse

@@ -1,3 +1,4 @@
+# campusevents/tests.py
 from django.urls import reverse
 from rest_framework.test import APITestCase, APIClient
 from .models import User, Organization, Event, Ticket
