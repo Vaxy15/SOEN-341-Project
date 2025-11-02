@@ -4,21 +4,21 @@ Views for the campusevents app.
 """
 
 from datetime import datetime
+import csv
+import json
 
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect, get_object_or_404
-from django.db.models import Q
-from django.utils import timezone
-from django.core.paginator import Paginator
-from django.http import HttpResponse
-from django.views.decorators.http import require_POST
+import numpy as np
+import cv2
+
 from django.contrib import messages
-from django.http import JsonResponse
-from django.http import JsonResponse
-from django.views.decorators.http import require_GET
+from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.db.models import Q, Count
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
 from django.utils.dateparse import parse_datetime
-
-
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -28,6 +28,9 @@ from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.authentication import SessionAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
 
 from .models import User, Organization, Event, Ticket
 from .serializers import (
@@ -49,8 +52,6 @@ from .serializers import (
     TicketIssueSerializer,
     TicketValidationSerializer,
 )
-
-import csv
 
 
 def build_event_discovery_qs(request):
@@ -119,10 +120,9 @@ def event_list_page(request):
             "page_size": page_size,
         },
         "page_sizes": [5, 10, 20, 50, 100],
-        "my_ticket_ids": my_ticket_ids,   # <-- add this
+        "my_ticket_ids": my_ticket_ids,
     }
     return render(request, "event_list.html", context)
-
 
 
 @login_required(login_url='login')
@@ -142,7 +142,7 @@ def create_event(request):
         ticket_type = request.POST.get("ticket_type") or "free"
 
         # ✅ Auto-approve for organizers/admins
-        status = Event.APPROVED
+        status_val = Event.APPROVED
 
         default_org, _ = Organization.objects.get_or_create(name="Default Org")
 
@@ -155,7 +155,7 @@ def create_event(request):
             end_at=end_at,
             capacity=capacity,
             ticket_type=ticket_type,
-            status=status,
+            status=status_val,
             created_by=request.user,
             org=default_org,
         )
@@ -281,6 +281,7 @@ class OrganizerRegistrationView(APIView):
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class OrganizerEventManagementView(APIView):
     """
     Organizer dashboard: list your events and create new ones.
@@ -300,12 +301,12 @@ class OrganizerEventManagementView(APIView):
             return Response({"error": "Only organizers and administrators can create events"},
                             status=status.HTTP_403_FORBIDDEN)
 
-        # Auto-approve organizer/admin-created events
         serializer = EventCreateSerializer(data=request.data)
         if serializer.is_valid():
             event = serializer.save(created_by=request.user, status=Event.APPROVED)
             return Response(EventSerializer(event).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class EventListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -323,14 +324,12 @@ class EventListView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # ✅ Auto-approve if organizer/admin
-        event_status = Event.APPROVED
-
         serializer = EventCreateSerializer(data=request.data)
         if serializer.is_valid():
-            event = serializer.save(created_by=request.user, status=event_status)
+            event = serializer.save(created_by=request.user, status=Event.APPROVED)
             return Response(EventSerializer(event).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class EventDiscoveryView(APIView):
     permission_classes = [IsAuthenticated]
@@ -366,6 +365,7 @@ class OrganizationListView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class EventDetailView(APIView):
     permission_classes = [IsAuthenticated]
@@ -654,7 +654,6 @@ class AdminUserStatusView(APIView):
 
 class AdminPendingOrganizersView(APIView):
     permission_classes = [IsAuthenticated]
-
     pagination_class = EventPagination
 
     def get(self, request):
@@ -729,56 +728,6 @@ class AdminEventModerationView(APIView):
         return Response(serializer.data)
 
 
-class AdminDashboardStatsView(APIView):
-    """Return small summary statistics for admin dashboards.
-
-    Response JSON:
-    {
-      "total_users": int,
-      "verified_organizers": int,
-      "pending_organizers": int,
-      "pending_events": int,
-      "events_per_month": [ {"month": "YYYY-MM", "count": int}, ... ]  # last 12 months
-    }
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        if not request.user.is_admin():
-            return Response({"error": "Only administrators can view dashboard stats"}, status=status.HTTP_403_FORBIDDEN)
-
-        total_users = User.objects.count()
-        verified_organizers = User.objects.filter(role=User.ROLE_ORGANIZER, is_verified=True).count()
-        pending_organizers = User.objects.filter(role=User.ROLE_ORGANIZER, is_verified=False).count()
-        pending_events = Event.objects.filter(status=Event.PENDING).count()
-
-        # events per month for the last 12 months
-        from django.utils import timezone
-        from datetime import timedelta
-        now = timezone.now()
-        events_per_month = []
-        # Build month buckets (YYYY-MM) going back 11 months + current
-        for i in range(11, -1, -1):
-            month_start = (now.replace(day=1) - timedelta(days=now.day - 1))  # first day of current month
-            # shift back i months
-            # naive approach: subtract roughly 30 days * i, then adjust to month start
-            candidate = month_start - timedelta(days=30 * i)
-            ym = candidate.strftime('%Y-%m')
-            # compute first day and next month first day
-            first_of_month = candidate.replace(day=1)
-            # compute next month by adding 32 days then setting day=1
-            next_month = (first_of_month + timedelta(days=32)).replace(day=1)
-            count = Event.objects.filter(created_at__gte=first_of_month, created_at__lt=next_month).count()
-            events_per_month.append({"month": ym, "count": count})
-
-        data = {
-            "total_users": total_users,
-            "verified_organizers": verified_organizers,
-            "pending_organizers": pending_organizers,
-            "pending_events": pending_events,
-            "events_per_month": events_per_month,
-        }
-        return Response(data)
 
 
 class AdminEventDetailView(APIView):
@@ -883,8 +832,59 @@ class AdminPendingEventsView(APIView):
         return Response({"pending_events": AdminEventSerializer(pending_events, many=True).data, "count": pending_events.count()})
 
 
+# ---------- CSV EXPORTS ----------
+
+@login_required(login_url='login')
+@require_GET
+def event_attendees_csv(request, primary_key):
+    """
+    Plain Django view that returns attendees as CSV using SESSION auth.
+    Only the event creator or an admin may download it.
+    """
+    event = get_object_or_404(Event, pk=primary_key)
+
+    # allow: admins or the event creator
+    if not (getattr(request.user, "is_admin", lambda: False)() or event.created_by_id == request.user.id):
+        return HttpResponse("Forbidden", status=403)
+
+    status_param = request.GET.get("status")
+    tickets_qs = event.tickets.select_related("user").order_by("issued_at")
+    if status_param:
+        tickets_qs = tickets_qs.filter(status=status_param)
+
+    filename = f"attendees_event_{event.id}.csv"
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        "ticket_id","ticket_status","user_email","first_name","last_name",
+        "student_id","phone_number","seat_number","issued_at","used_at"
+    ])
+
+    for t in tickets_qs:
+        u = t.user
+        writer.writerow([
+            t.ticket_id,
+            t.status,
+            u.email or "",
+            u.first_name or "",
+            u.last_name or "",
+            getattr(u, "student_id", "") or "",
+            getattr(u, "phone_number", "") or "",
+            t.seat_number or "",
+            t.issued_at.isoformat() if t.issued_at else "",
+            t.used_at.isoformat() if t.used_at else "",
+        ])
+
+    return response
+
+
 class EventAttendeesCSVListView(APIView):
-    """Return event attendee list as CSV"""
+    """
+    API version (JWT/DRF auth). In urls.py its name should be different from the
+    session route to avoid reverse() collisions — e.g. 'event_attendees_csv_api'.
+    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, primary_key):
@@ -922,9 +922,6 @@ class EventAttendeesCSVListView(APIView):
 
         return response
 
-from django.contrib import messages
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
 
 @require_http_methods(["GET", "POST"])
 def register_view(request):
@@ -986,6 +983,7 @@ def register_view(request):
     # GET
     return render(request, "register.html")
 
+
 @login_required(login_url='login')
 @require_POST
 def claim_ticket(request, pk):
@@ -1012,6 +1010,7 @@ def claim_ticket(request, pk):
     messages.success(request, "Ticket claimed successfully!")
     return redirect(request.META.get("HTTP_REFERER", "event_list_page"))
 
+
 @login_required(login_url='login')
 def my_events(request):
     """List all events for which the logged-in user has a ticket."""
@@ -1019,8 +1018,11 @@ def my_events(request):
 
     context = {
         "tickets": tickets,
+        "now": timezone.now(),
     }
     return render(request, "my_events.html", context)
+
+
 def calendar_page(request):
     """
     HTML page: renders a month/week/day calendar.
@@ -1042,15 +1044,15 @@ def calendar_events_feed(request):
     end_param = request.GET.get("end")
 
     # If FullCalendar didn’t send a window, just show the next 60 days
-    from django.utils import timezone
+    from django.utils import timezone as dj_tz
     from datetime import timedelta
-    start_dt = parse_datetime(start_param) if start_param else timezone.now() - timedelta(days=1)
-    end_dt = parse_datetime(end_param) if end_param else timezone.now() + timedelta(days=60)
+    start_dt = parse_datetime(start_param) if start_param else dj_tz.now() - timedelta(days=1)
+    end_dt = parse_datetime(end_param) if end_param else dj_tz.now() + timedelta(days=60)
 
-    if start_dt and timezone.is_naive(start_dt):
-        start_dt = timezone.make_aware(start_dt, timezone.get_current_timezone())
-    if end_dt and timezone.is_naive(end_dt):
-        end_dt = timezone.make_aware(end_dt, timezone.get_current_timezone())
+    if start_dt and dj_tz.is_naive(start_dt):
+        start_dt = dj_tz.make_aware(start_dt, dj_tz.get_current_timezone())
+    if end_dt and dj_tz.is_naive(end_dt):
+        end_dt = dj_tz.make_aware(end_dt, dj_tz.get_current_timezone())
 
     # Overlap query: (event.end >= window.start) & (event.start <= window.end)
     qs = (
@@ -1068,9 +1070,7 @@ def calendar_events_feed(request):
             "title": e.title,
             "start": e.start_at.isoformat(),
             "end": e.end_at.isoformat() if e.end_at else None,
-            # Optional: clicking an event sends users to the Discover list filtered by this title
             "url": f"/events/?search={e.title}",
-            # Optional extra fields (visible in custom rendering)
             "extendedProps": {
                 "organization": e.org.name if e.org_id else "",
                 "location": e.location or "",
@@ -1089,9 +1089,7 @@ def admin_events_dashboard(request):
     and requires the user to be an admin.
     """
     if not getattr(request.user, 'is_admin', lambda: False)():
-        # If user is not an admin, redirect to home or show 403
         from django.http import HttpResponseForbidden
-
         return HttpResponseForbidden("Only administrators can view this page")
 
     return render(request, "admin_events_dashboard.html", {})
@@ -1103,15 +1101,243 @@ def admin_users_dashboard(request):
     Simple HTML page for administrators to list users and perform basic actions:
     - Change role (student / organizer / admin)
     - Toggle active status
-
-    This uses simple HTML forms that POST to the existing API endpoints (which
-    are protected by admin checks). We render a small user list server-side to
-    keep the page very simple and avoid client-side JS.
     """
     if not getattr(request.user, 'is_admin', lambda: False)():
         from django.http import HttpResponseForbidden
-
         return HttpResponseForbidden("Only administrators can view this page")
 
     users = User.objects.all().order_by('-created_at')[:200]
     return render(request, "admin_users_dashboard.html", {"users": users})
+
+
+def _decode_qr_from_uploaded(django_file) -> str | None:
+    """
+    Try to decode a QR code from an uploaded image.
+    Returns the decoded string (payload) or None.
+    """
+    data = django_file.read()
+    arr = np.frombuffer(data, dtype=np.uint8)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    if img is None:
+        return None
+    detector = cv2.QRCodeDetector()
+    text, points, _ = detector.detectAndDecode(img)
+    return text.strip() if text else None
+
+
+@login_required(login_url='login')
+def organizer_my_events(request):
+    """
+    Page for organizers/admins: list their events and provide a QR image upload
+    per event to mark attendance (ticket 'USED') if valid.
+    """
+    if request.user.role not in ['organizer', 'admin']:
+        return redirect('event_list_page')
+
+    events = (
+        Event.objects
+        .filter(created_by=request.user)
+        .order_by('-start_at')
+        .prefetch_related('tickets')
+    )
+
+    event_cards = []
+    for e in events:
+        issued = e.tickets.filter(status=Ticket.ISSUED).count()
+        used = e.tickets.filter(status=Ticket.USED).count()
+        event_cards.append({
+            "obj": e,
+            "issued": issued,
+            "used": used,
+            "remaining": e.remaining_capacity,
+        })
+
+    return render(request, "organizer_my_events.html", {
+        "event_cards": event_cards,
+    })
+
+
+@login_required(login_url='login')
+@require_POST
+def scan_ticket_image(request, pk):
+    event = get_object_or_404(Event, pk=pk)
+
+    # Permissions: organizer/admin OR event owner
+    if not (request.user.role in ['organizer', 'admin'] or event.created_by == request.user):
+        messages.error(request, "You do not have permission to validate tickets for this event.")
+        return redirect('organizer_my_events')
+
+    uploaded = request.FILES.get("qr_image")
+    if not uploaded:
+        messages.error(request, "Please choose an image file with a QR code.")
+        return redirect('organizer_my_events')
+
+    try:
+        payload = _decode_qr_from_uploaded(uploaded)
+    except Exception as ex:
+        messages.error(request, f"Could not read the image: {ex}")
+        return redirect('organizer_my_events')
+
+    if not payload:
+        messages.error(request, "No QR code detected in the image.")
+        return redirect('organizer_my_events')
+
+    # The QR we generate is JSON with ticket_id, event_id, etc.
+    try:
+        data = json.loads(payload)
+    except Exception:
+        # Some phones might encode the plain ticket_id; try that too
+        data = {"ticket_id": payload}
+
+    ticket_id = data.get("ticket_id")
+    if not ticket_id:
+        messages.error(request, "QR code doesn’t include a ticket_id.")
+        return redirect('organizer_my_events')
+
+    try:
+        ticket = Ticket.objects.select_related("event", "user").get(ticket_id=ticket_id)
+    except Ticket.DoesNotExist:
+        messages.error(request, f"Ticket {ticket_id} not found.")
+        return redirect('organizer_my_events')
+
+    if ticket.event_id != event.id:
+        messages.error(request, "This ticket is for a different event.")
+        return redirect('organizer_my_events')
+
+    # Validate using your existing business rules
+    if ticket.is_valid():
+        if ticket.status == Ticket.USED:
+            messages.info(request, f"Ticket {ticket.ticket_id} was already used by {ticket.user.email}.")
+        else:
+            ticket.use_ticket()
+            messages.success(
+                request,
+                f"Checked in: {ticket.user.get_full_name() or ticket.user.email} "
+                f"(Ticket {ticket.ticket_id})"
+            )
+    else:
+        # Build a reason (best-effort)
+        reason = []
+        if ticket.status == Ticket.CANCELLED: reason.append("cancelled")
+        if ticket.status == Ticket.EXPIRED:   reason.append("expired")
+        if ticket.event.status != Event.APPROVED: reason.append("event not approved")
+        if ticket.expires_at and ticket.expires_at <= timezone.now(): reason.append("expired")
+        messages.error(request, f"Ticket invalid ({', '.join(reason) or 'not valid'}).")
+
+    return redirect('organizer_my_events')
+
+class AdminDashboardStatsView(APIView):
+    authentication_classes = (SessionAuthentication, JWTAuthentication)
+    permission_classes = [IsAuthenticated]
+    """
+    Return summary statistics for admin dashboards.
+
+    Response JSON:
+    {
+      "totals": {
+        "total_users": int,
+        "total_events": int,
+        "tickets_issued_total": int,
+        "tickets_used_total": int,
+        "verified_organizers": int,
+        "pending_organizers": int,
+        "pending_events": int
+      },
+      "events_per_month": [ {"month": "YYYY-MM", "count": int}, ... ],   # last 12 months
+      "tickets_per_month": [ {"month": "YYYY-MM", "issued": int, "used": int, "participation_rate": float}, ... ],
+      "top_events_by_checkins": [ {"event_id": int, "title": str, "used": int}, ... ]  # top 5
+    }
+    """
+
+    def get(self, request):
+        if not request.user.is_admin():
+            return Response({"error": "Only administrators can view dashboard stats"}, status=status.HTTP_403_FORBIDDEN)
+
+        # Totals
+        total_users = User.objects.count()
+        total_events = Event.objects.count()
+        verified_organizers = User.objects.filter(role=User.ROLE_ORGANIZER, is_verified=True).count()
+        pending_organizers = User.objects.filter(role=User.ROLE_ORGANIZER, is_verified=False).count()
+        pending_events = Event.objects.filter(status=Event.PENDING).count()
+
+        tickets_issued_total = Ticket.objects.filter(status=Ticket.ISSUED).count()
+        tickets_used_total = Ticket.objects.filter(status=Ticket.USED).count()
+
+        # Monthly buckets for the last 12 months (including current)
+        from django.utils import timezone as dj_tz
+        from datetime import timedelta
+        now = dj_tz.now()
+
+        # First day of this month at midnight
+        first_of_this_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        def month_start_n_ago(n: int):
+            dt = first_of_this_month
+            for _ in range(n):
+                dt = (dt - timedelta(days=32)).replace(day=1)
+            return dt
+
+        events_per_month = []
+        tickets_per_month = []
+
+        # Build oldest → newest (11 months ago .. this month)
+        for n in range(11, -1, -1):
+            start = month_start_n_ago(n)
+            next_month = (start + timedelta(days=32)).replace(day=1)
+            ym = start.strftime('%Y-%m')
+
+            # Events created in month
+            events_count = Event.objects.filter(created_at__gte=start, created_at__lt=next_month).count()
+            events_per_month.append({"month": ym, "count": events_count})
+
+            # Tickets issued/used in month
+            issued = Ticket.objects.filter(issued_at__gte=start, issued_at__lt=next_month).count()
+            used = Ticket.objects.filter(used_at__isnull=False, used_at__gte=start, used_at__lt=next_month).count()
+            participation_rate = float(used / issued) if issued else 0.0
+            tickets_per_month.append({
+                "month": ym,
+                "issued": issued,
+                "used": used,
+                "participation_rate": round(participation_rate, 3),
+            })
+
+        # Top events by check-ins (used tickets)
+        top_events_qs = (
+            Event.objects
+            .annotate(used_count=Count('tickets', filter=Q(tickets__status=Ticket.USED)))
+            .order_by('-used_count', '-start_at')[:5]
+        )
+        top_events_by_checkins = [
+            {"event_id": e.id, "title": e.title, "used": e.used_count or 0}
+            for e in top_events_qs
+        ]
+
+        data = {
+            "totals": {
+                "total_users": total_users,
+                "total_events": total_events,
+                "tickets_issued_total": tickets_issued_total,
+                "tickets_used_total": tickets_used_total,
+                "verified_organizers": verified_organizers,
+                "pending_organizers": pending_organizers,
+                "pending_events": pending_events,
+            },
+            "events_per_month": events_per_month,
+            "tickets_per_month": tickets_per_month,
+            "top_events_by_checkins": top_events_by_checkins,
+        }
+        return Response(data)
+
+
+
+@login_required(login_url='login')
+def admin_dashboard_page(request):
+    """
+    Simple HTML page for administrators that fetches /admin/dashboard/stats/
+    and renders global stats + participation trend.
+    """
+    if not getattr(request.user, 'is_admin', lambda: False)():
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("Only administrators can view this page")
+
+    return render(request, "admin_dashboard.html", {})

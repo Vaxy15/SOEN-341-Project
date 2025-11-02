@@ -26,6 +26,8 @@ dev = [
   "pytest>=8.0",
   "pytest-django>=4.7",
   "pylint",
+  "numpy",
+  "opencv-python-headless",
 ]
 
 [tool.setuptools]

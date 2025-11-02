@@ -1,66 +1,86 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" />
   <title>{% block title %}Campus Events{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --bg:#f7f7fb; --panel:#fff; --text:#111; --muted:#666; --border:#e6e6ef; --primary:#3b82f6; --primary-ghost:#e8f0fe; }
-    body { margin:0; font-family: Inter, system-ui, Segoe UI, Arial, sans-serif; background:var(--bg); color:var(--text); }
-    .container { max-width:1100px; margin:0 auto; padding:20px 16px; }
-    .btn { border:1px solid var(--border); border-radius:10px; padding:8px 12px; background:#fff; text-decoration:none; color:inherit; cursor:pointer; }
-    .btn:disabled { opacity:.6; cursor:not-allowed; }
-    .nav { position:sticky; top:0; z-index:10; background:#fff; border-bottom:1px solid var(--border); }
-    .nav-inner { display:flex; align-items:center; gap:16px; }
-    .nav a { text-decoration:none; color:inherit; padding:10px 12px; border-radius:10px; }
-    .nav a.active { background:var(--primary-ghost); color:#1d4ed8; }
-    main { padding-top:14px; }
+    :root {
+      --bg: #f7f7fb; --panel:#fff; --text:#111; --muted:#666; --border:#e6e6ef; --primary:#3b82f6;
+    }
+    * { box-sizing: border-box }
+    body { margin:0; font-family: Inter, system-ui, -apple-system, Segoe UI, Arial, sans-serif; color:var(--text); background:var(--bg); }
+    a { color: var(--primary); text-decoration: none; }
+    header { background:var(--panel); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+    .topnav { display:flex; align-items:center; justify-content:space-between; height:56px; }
+    .brand { font-weight:700; }
+    nav ul { list-style:none; display:flex; gap:12px; padding:0; margin:0; }
+    nav a, nav button { display:inline-block; padding:8px 10px; border-radius:10px; border:1px solid transparent; background:transparent; color:inherit; cursor:pointer; }
+    nav a:hover, nav button:hover { background:#eef4ff; border-color:#dbe8ff; }
+    main { padding: 18px 0 32px; }
+    .messages { margin: 12px 0; }
+    .msg { background:#fff; border:1px solid var(--border); border-left:4px solid var(--primary); padding:10px 12px; border-radius:10px; box-shadow:0 6px 18px rgba(20,20,45,.05); }
+    footer { color:var(--muted); font-size:13px; padding:18px 0; border-top:1px solid var(--border); }
+    .btn { padding:8px 12px; border:1px solid var(--border); border-radius:10px; background:#fff; }
+    .btn-primary { background:var(--primary); color:#fff; border-color:var(--primary); }
   </style>
   {% block head_extra %}{% endblock %}
 </head>
 <body>
-<nav class="nav">
-  <div class="container nav-inner" style="justify-content: space-between;">
-    <div style="display:flex; gap:6px; align-items:center;">
-      <a href="{% url 'home' %}" class="{% if request.path == '/' %}active{% endif %}">Home</a>
-      <a href="{% url 'event_list_page' %}" class="{% if request.path == '/events/' or request.path|slice:':8' == '/events/' %}active{% endif %}">Discover</a>
+  <header>
+    <div class="container">
+      <div class="topnav">
+        <div class="brand"><a href="{% url 'event_list_page' %}">Campus Events</a></div>
+        <nav>
+          <ul>
+            <li><a href="{% url 'event_list_page' %}">Discover</a></li>
 
-      {% if request.user.is_authenticated %}
-        {% if request.user.role == 'organizer' or request.user.role == 'admin' %}
-          <a href="{% url 'create_event' %}" class="{% if request.path == '/events/create/' %}active{% endif %}">Create Event</a>
-        {% else %}
-          <a href="{% url 'my_events' %}" class="{% if request.path == '/my-events/' %}active{% endif %}">My Events</a>
-          <a href="{% url 'calendar_page' %}" class="{% if request.path == '/calendar/' %}active{% endif %}">Calendar</a>
-        {% endif %}
-      {% endif %}
-    </div>
+            {% if request.user.is_authenticated %}
+              <li><a href="{% url 'my_events' %}">My Events</a></li>
 
-    <div style="display:flex; gap:8px; align-items:center;">
-      {% if request.user.is_authenticated %}
-        <span style="font-size:14px; color:var(--muted);">Hi, {{ request.user.first_name|default:request.user.email }}</span>
-        <form method="post" action="{% url 'logout' %}">
-          {% csrf_token %}
-          <button class="btn" type="submit">Logout</button>
-        </form>
-      {% else %}
-        <a class="btn" href="{% url 'login' %}">Login</a>
-        <a class="btn" href="{% url 'register' %}">Sign Up</a>
-      {% endif %}
-    </div>
-  </div>
-</nav>
+              {% if request.user.role == 'organizer' or request.user.role == 'admin' %}
+                <li><a href="{% url 'organizer_my_events' %}">Organizer</a></li>
+              {% endif %}
 
-<main class="container">
-  {% if messages %}
-    <div style="margin:10px 0;">
-      {% for message in messages %}
-        <div class="card" style="padding:10px; border-left:4px solid #3b82f6; margin-bottom:8px;">
-          {{ message }}
-        </div>
-      {% endfor %}
+              {# ---- Admin-only links ---- #}
+              {% if request.user.role == 'admin' %}
+                <li><a href="{% url 'admin_dashboard_page' %}">Dashboard</a></li>
+                <li><a href="{% url 'admin:index' %}">Django Admin</a></li>
+              {% endif %}
+
+              <li>
+                <form action="{% url 'logout' %}" method="post" style="display:inline">
+                  {% csrf_token %}
+                  <button type="submit" class="btn">Logout</button>
+                </form>
+              </li>
+            {% else %}
+              <li><a href="{% url 'login' %}">Login</a></li>
+              <li><a href="{% url 'register' %}">Register</a></li>
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
     </div>
-  {% endif %}
-  {% block content %}{% endblock %}
-</main>
+  </header>
+
+  <main class="container">
+    {% if messages %}
+      <div class="messages">
+        {% for message in messages %}
+          <div class="msg">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>
+    <div class="container">
+      © {{ now|date:"Y" }} Campus Events
+    </div>
+  </footer>
 </body>
 </html>

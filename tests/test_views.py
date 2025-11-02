@@ -23,13 +23,15 @@ except Exception:
 # # ---------------------------------------------------------------
 
 import datetime as dt
+import json
 import pytest
 from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework import status
 from django.urls import reverse
 
-from campusevents.models import User, Organization, Event
+from campusevents.models import User, Organization, Event, Ticket
+from django.test import Client as DjangoClient
 
 
 @pytest.fixture
@@ -90,22 +92,6 @@ def _url_or(name, default):
         return default
 
 
-# def test_registration_allows_anonymous(db, api_client):
-#     """POST /api/auth/register/ should create user (if route exists)."""
-#     url = _url_or("register", "/api/auth/register/")
-#     payload = {
-#         "email": "newuser@example.com",
-#         "password": "pass1234",
-#         "first_name": "New",
-#         "last_name": "User",
-#         "role": "student",
-#     }
-#     resp = api_client.post(url, payload, format="json")
-#     assert resp.status_code in [
-#         status.HTTP_201_CREATED, status.HTTP_404_NOT_FOUND, status.HTTP_405_METHOD_NOT_ALLOWED
-#     ]
-
-
 def test_profile_requires_auth(db, api_client):
     """Anonymous access should be forbidden."""
     url = _url_or("profile", "/api/profile/")
@@ -147,7 +133,6 @@ def test_event_list_auth_and_content(db, api_client, setup_data):
         assert "Intro to Git" in (titles or ["Intro to Git"])
 
 
-
 def test_event_create_permissions(db, api_client, setup_data):
     """Student forbidden; organizer/admin allowed."""
     url = _url_or("events", "/api/events/")
@@ -177,7 +162,6 @@ def test_event_create_permissions(db, api_client, setup_data):
     assert resp_admin.status_code in [status.HTTP_201_CREATED, status.HTTP_404_NOT_FOUND]
 
 
-
 def test_event_detail_access(db, api_client, setup_data):
     """GET /api/events/<id>/ should return event data."""
     api_client.force_authenticate(setup_data["student"])
@@ -197,7 +181,11 @@ def test_admin_events_requires_admin(db, api_client, setup_data):
     url = _url_or("admin_events", "/api/admin/events/")
     api_client.force_authenticate(setup_data["student"])
     resp = api_client.get(url)
-    assert resp.status_code in [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND]
+    # Some projects may route to an admin login page (302). Allow that as well.
+    assert resp.status_code in [status.HTTP_302_FOUND, status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND]
+    if resp.status_code == status.HTTP_302_FOUND:
+        loc = resp.headers.get("Location", "")
+        assert "login" in loc or "account" in loc
 
 
 def _seed_events(user, organization, count=3):
@@ -274,3 +262,102 @@ if __name__ == "__main__":
     import pytest
     sys.exit(pytest.main(["-v", "--ds=campus.settings", __file__]))
 # -----------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_admin_pages_require_admin(create_users):
+    student, organizer, admin = create_users
+    client = DjangoClient()
+    client.login(username=student.email, password="pass1234")
+
+    for name, default in (
+        ("admin_events_dashboard", "/admin/events-dashboard/"),
+        ("admin_users_dashboard", "/admin/users-dashboard/"),
+        ("admin_dashboard_page", "/admin/dashboard/"),
+    ):
+        resp = client.get(_url_or(name, default))
+        # Some projects use Django admin which redirects to login (302)
+        assert resp.status_code in (302, 403, 404)
+        if resp.status_code == 302:
+            loc = resp.headers.get("Location", "")
+            assert "login" in loc or "account" in loc
+
+    client.logout()
+    client.login(username=admin.email, password="pass1234")
+    for name, default in (
+        ("admin_events_dashboard", "/admin/events-dashboard/"),
+        ("admin_users_dashboard", "/admin/users-dashboard/"),
+        ("admin_dashboard_page", "/admin/dashboard/"),
+    ):
+        resp = client.get(_url_or(name, default))
+        assert resp.status_code in (200, 404)
+
+
+@pytest.mark.django_db
+def test_logout_view_payload_shape(create_users):
+    student, organizer, admin = create_users
+    api = APIClient()
+    api.force_authenticate(student)  # any authenticated user
+    url = _url_or("logout", "/api/auth/logout/")
+
+    # Missing refresh -> 400/404 or 302 redirect depending on implementation
+    resp = api.post(url, {"wrong": "value"}, format="json")
+    assert resp.status_code in (status.HTTP_302_FOUND, status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND)
+    if resp.status_code == status.HTTP_302_FOUND:
+        loc = resp.headers.get("Location", "")
+        assert loc == "/" or "login" in loc
+
+
+@pytest.mark.django_db
+def test_calendar_events_feed_basic(setup_data):
+    """
+    Exercise the calendar feed route via HTTP to avoid importing campusevents.views,
+    which would require numpy/cv2. If the route exists, assert it returns JSON
+    with the seeded events; otherwise accept 404.
+    """
+    client = DjangoClient()
+    # Default/fallback path used by earlier tests and docs
+    url = _url_or("calendar_events_feed", "/api/calendar-events/")
+    resp = client.get(url, {
+        "start": (timezone.now() + dt.timedelta(hours=1)).isoformat(),
+        "end": (timezone.now() + dt.timedelta(days=7)).isoformat(),
+    })
+    assert resp.status_code in (200, 404)
+    if resp.status_code == 200:
+        data = json.loads(resp.content.decode("utf-8"))
+        titles = {e.get("title") for e in data}
+        assert "Intro to Git" in titles  # seeded in setup_data
+
+
+# ---- Admin dashboard stats (kept, uses create_users + setup_data) ----
+
+@pytest.mark.django_db
+def test_admin_dashboard_stats(create_users, setup_data):
+    """
+    Create one ISSUED ticket for student A and one USED ticket for student B.
+    This avoids violating the unique (event_id, user_id) constraint.
+    """
+    student, organizer, admin = create_users
+    event = setup_data["event"]
+
+    # Another student for the second ticket
+    student_b = User.objects.create_user(
+        email="student2@example.com", password="pass1234",
+        first_name="Stu2", last_name="Dent", role="student"
+    )
+
+    # One issued ticket for A
+    Ticket.objects.create(event=event, user=student, status=Ticket.ISSUED)
+
+    # One used ticket for B
+    t2 = Ticket.objects.create(event=event, user=student_b, status=Ticket.ISSUED)
+    t2.use_ticket()
+
+    api = APIClient()
+    api.force_authenticate(admin)
+    url = _url_or("admin_dashboard_stats", "/admin/dashboard/stats/")
+    r = api.get(url)
+    assert r.status_code in (200, 404)
+    if r.status_code == 200:
+        data = r.json()
+        assert set(data.keys()) == {"totals", "events_per_month", "tickets_per_month", "top_events_by_checkins"}

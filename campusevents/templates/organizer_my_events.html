@@ -1,0 +1,61 @@
+<!-- campusevents\templates\organizer_my_events.html -->
+{% extends "base.html" %}
+{% block title %}My Events (Organizer){% endblock %}
+
+{% block head_extra %}
+<style>
+  .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+  .card { background:#fff; border:1px solid #e6e6ef; border-radius:14px; padding:16px; box-shadow:0 6px 18px rgba(20,20,45,.05); }
+  .muted { color:#666; font-size:14px; }
+  .stat { display:inline-block; margin-right:10px; padding:2px 8px; border:1px solid #e6e6ef; border-radius:999px; font-size:12px; background:#f7f7fb; }
+  input[type="file"] { display:block; margin-top:8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="topbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h1 style="margin:0;">My Events (Organizer)</h1>
+    <a class="btn" href="{% url 'create_event' %}">Create Event</a>
+  </div>
+
+  {% if messages %}
+    <div style="margin:10px 0;">
+      {% for message in messages %}
+        <div class="card" style="border-left:4px solid #3b82f6">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if event_cards %}
+    <section class="grid">
+      {% for ec in event_cards %}
+        {% with e=ec.obj %}
+        <article class="card">
+          <h3 style="margin:0 0 6px">{{ e.title }}</h3>
+          <div class="muted">{{ e.location }} • {{ e.start_at|date:"M j, Y, P T" }} → {{ e.end_at|date:"M j, Y, P T" }}</div>
+          <div style="margin:8px 0;">
+            <span class="stat">Status: {{ e.status }}</span>
+            <span class="stat">Issued: {{ ec.issued }}</span>
+            <span class="stat">Checked-in: {{ ec.used }}</span>
+            <span class="stat">Left: {{ ec.remaining }}</span>
+          </div>
+
+          <form method="post" action="{% url 'scan_ticket_image' e.id %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <label><strong>Upload QR image (PNG/JPG)</strong></label>
+            <input type="file" name="qr_image" accept="image/*" required>
+            <button class="btn btn-primary" type="submit" style="margin-top:8px;">Validate & Check-in</button>
+          </form>
+
+          <div style="margin-top:10px;">
+            <a class="btn" href="{% url 'event_attendees_csv' e.id %}" target="_blank">⬇️ Download Attendees CSV</a>
+
+          </div>
+        </article>
+        {% endwith %}
+      {% endfor %}
+    </section>
+  {% else %}
+    <div class="card">You haven’t created any events yet.</div>
+  {% endif %}
+{% endblock %}

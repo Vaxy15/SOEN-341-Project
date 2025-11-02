@@ -1,3 +1,4 @@
+<!-- campusevents\templates\admin_events_dashboard.html -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -104,8 +105,7 @@
         <div style="margin-top:8px">
           <a href="/api/admin/events/${e.id}/" target="_blank">View JSON</a>
           &nbsp;|&nbsp;
-          <a href="/admin/events/${e.id}/attendees/export/" target="_blank">⬇️ Download CSV</a>
-        </div>
+          <a href="/organizer/events/${e.id}/attendees/export/" target="_blank">⬇️ Download CSV</a>        </div>
       `;
       resultsEl.appendChild(div);
     });
