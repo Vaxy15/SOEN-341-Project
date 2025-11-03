@@ -7,9 +7,6 @@ djangorestframework-simplejwt==5.3.0
 django-cors-headers==4.3.1
 qrcode==8.2
 Pillow==11.3.0
-<<<<<<< HEAD
-=======
 icalendar==5.0.5
->>>>>>> 4a62580423ab393a6eea665b11199dd95af7be4f
 sqlparse==0.5.3
 tzdata==2025.2
