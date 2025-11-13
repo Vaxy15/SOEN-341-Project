@@ -19,3 +19,5 @@ pytest-django==4.8.0
 celery==5.3.6
 
 celery==5.3.6
+
+celery==5.3.6
