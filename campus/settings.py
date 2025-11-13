@@ -10,8 +10,14 @@ from datetime import timedelta
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
-
+try:
+    from dotenv import load_dotenv  # type: ignore
+except Exception:
+    def load_dotenv(*args, **kwargs):
+        return False  # no-op if package isn't installed
+# Load .env locally if available; harmless in CI
+load_dotenv()
+# ----------------------
 
 # --- Security / core flags ---
 # SECURITY WARNING: keep the secret key used in production secret!
