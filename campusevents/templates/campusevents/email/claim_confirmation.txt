@@ -1,0 +1,16 @@
+Hi {{ user_name }},
+
+Your ticket is confirmed! 🎟️
+
+Event: {{ event_title }}
+When: {{ event_dt }}
+Where: {{ location }}
+Ticket ID: {{ ticket_id }}{% if seat %}
+Seat: {{ seat }}{% endif %}
+
+View your ticket & QR: {{ view_url }}
+
+If you need help, contact {{ organizer }} {{ support_email }}.
+
+Thanks,
+Campus Events

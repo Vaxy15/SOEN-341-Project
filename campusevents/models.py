@@ -8,6 +8,8 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.files.base import ContentFile
 from django.utils import timezone
+from django.conf import settings
+
 
 
 class CustomUserManager(BaseUserManager):
@@ -224,3 +226,38 @@ class Ticket(models.Model):
         if self.qr_code:
             return self.qr_code.url
         return None
+class EmailLog(models.Model):
+    STATUS_CHOICES = (
+        ("queued", "Queued"),
+        ("sent", "Sent"),
+        ("failed", "Failed"),
+    )
+
+    to = models.EmailField()
+    subject = models.CharField(max_length=255)
+    template = models.CharField(max_length=255)
+    context_json = models.JSONField(default=dict, blank=True)
+
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="queued")
+    attempts = models.PositiveIntegerField(default=0)
+    last_error = models.TextField(blank=True, default="")
+    message_id = models.CharField(max_length=255, blank=True, default="")
+    send_key = models.CharField(max_length=255, db_index=True, blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    # light linkage for admin visibility (no hard FK to Event since it’s simple)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    event_id = models.CharField(max_length=64, blank=True, default="")
+    ticket_id = models.CharField(max_length=64, blank=True, default="")
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["send_key"]),
+            models.Index(fields=["status", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.subject} → {self.to} [{self.status}]"

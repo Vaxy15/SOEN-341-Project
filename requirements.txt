@@ -10,3 +10,5 @@ Pillow==11.3.0
 icalendar==5.0.5
 sqlparse==0.5.3
 tzdata==2025.2
+celery[redis]==5.5.3
+redis==5.2.0

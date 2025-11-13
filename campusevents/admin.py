@@ -1,8 +1,8 @@
 # campusevents/admin.py
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, Organization, Event, Ticket
-
+from .models import User, Organization, Event, Ticket, EmailLog
+from .models import EmailLog
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
@@ -84,3 +84,12 @@ class TicketAdmin(admin.ModelAdmin):
         ("Timestamps", {"fields": ("issued_at", "used_at", "expires_at")}),
         ("Additional", {"fields": ("seat_number", "notes")}),
     )
+
+
+@admin.register(EmailLog)
+class EmailLogAdmin(admin.ModelAdmin):
+    list_display = ("to", "subject", "status", "created_at", "sent_at", "user", "event_id", "ticket_id")
+    list_filter = ("status",)
+    search_fields = ("to", "subject", "last_error", "message_id", "send_key")
+    readonly_fields = ("created_at", "sent_at")
+

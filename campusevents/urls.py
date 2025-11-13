@@ -2,6 +2,8 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
+from campusevents.views import email_views  # add this
+
 
 urlpatterns = [
     # Login/logout (HTML)
@@ -84,6 +86,12 @@ urlpatterns = [
         views.EventAttendeesCSVListView.as_view(),
         name="dashboard_event_attendees_csv",
     ),
+    path("tickets/<int:pk>/resend-confirmation/", email_views.resend_confirmation, name="resend_confirmation"),
+    path("tickets/view/", email_views.view_ticket_signed, name="view_ticket_signed"),
+    path("dev/email/preview/claim/<int:pk>/", email_views.preview_claim_email, name="preview_claim_email"),
+
+
+
 
     # ---------- END DASHBOARD ROUTES ----------
 ]
