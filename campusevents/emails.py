@@ -28,7 +28,7 @@ def build_confirmation_message(
     ctx = {
         "user_name": user_name,
         "event_title": event_title,
-        "event_dt": event_dt,             # aware dt in America/Toronto display
+        "event_dt": event_dt,             
         "location": location,
         "ticket_id": ticket_id,
         "seat": seat,

@@ -211,3 +211,18 @@ DEFAULT_FROM_EMAIL = os.getenv(
 CELERY_TASK_ALWAYS_EAGER=False
 CELERY_BROKER_URL = "memory://"
 CELERY_RESULT_BACKEND = "cache+memory://"
+
+# --- Test-mode safety ---------------------------------------------------------
+import os, sys
+if "pytest" in sys.modules or os.environ.get("DJANGO_TEST", "0") == "1":
+    # Celery: run tasks inline so no broker/worker is needed
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+    CELERY_BROKER_URL = "memory://"
+    CELERY_RESULT_BACKEND = "cache+memory://"
+
+    # Email: capture mails in memory, never hit SMTP
+    EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+
+    # Provide a default base URL so templates don’t break
+    APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://testserver")
