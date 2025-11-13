@@ -1,4 +1,19 @@
 # campusevents/tasks.py
+# campusevents/tasks.py (top)
+try:
+    from celery import shared_task  # real decorator when Celery is available
+except Exception:  # Celery not installed in CI → provide a lightweight shim
+    def shared_task(*dargs, **dkwargs):
+        def _decorator(fn):
+            # run synchronously when .delay/.apply_async are called
+            def _delay(*args, **kwargs):
+                return fn(*args, **kwargs)
+            def _apply_async(args=None, kwargs=None, **_k):
+                return fn(*(args or ()), **(kwargs or {}))
+            fn.delay = _delay
+            fn.apply_async = _apply_async
+            return fn
+        return _decorator
 
 from __future__ import annotations
 
@@ -31,12 +46,12 @@ def _range_human(start, end):
 
 
 def _send_from_log(log: EmailLog):
-    # Prevent re-sends if a retry lands after success
+
     if log.status == "sent":
         return
     ctx = log.context_json 
 
-    # one display field only; builder expects "event_dt"
+
     event_dt_display = ctx.get("event_dt", "")
 
     msg = build_confirmation_message(
@@ -81,13 +96,13 @@ def send_confirmation_task(self, log_id: int):
 def send_ticket_confirmation_email(self, ticket_id: int):
     t = Ticket.objects.select_related("event", "user").get(id=ticket_id)
 
-    # preformat a single, JSON-safe string for the range
+
     event_dt_display = _range_human(t.event.start_at, t.event.end_at)
 
     ctx = {
         "user_name": (f"{t.user.first_name} {t.user.last_name}".strip() or t.user.email),
         "event_title": t.event.title,
-        "event_dt": event_dt_display,     # single field (what the builder expects)
+        "event_dt": event_dt_display,     
         "location": t.event.location,
         "ticket_id": t.ticket_id,
         "seat": t.seat_number or None,
