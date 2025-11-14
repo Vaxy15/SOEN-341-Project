@@ -1,77 +1,94 @@
+# campusevents/tasks.py
 from __future__ import annotations
-# --- Celery shim for CI (lets .delay() work even if celery isn't installed) ---
+
+# --- Celery (safe shim if Celery isn't installed, e.g., in CI) ----------------
 try:
-    from celery import shared_task  # real celery when available
+    from celery import shared_task  # type: ignore
 except Exception:
-    class _EagerTaskWrapper:
-        def __init__(self, f):
-            self._f = f
-        def __call__(self, *a, **k):
-            return self._f(*a, **k)
-        def delay(self, *a, **k):
-            return self._f(*a, **k)
-        apply_async = delay
-    def shared_task(func=None, **kwargs):
-        if func is None:
-            def deco(f): return _EagerTaskWrapper(f)
-            return deco
-        return _EagerTaskWrapper(func)
-# -------------------------------------------------------------------------------
+    def shared_task(*dargs, **dkwargs):
+        """Fallback decorator that gives the function a .delay/.apply_async which call it inline."""
+        def _decorate(fn):
+            def _delay(*args, **kwargs):
+                return fn(*args, **kwargs)
+            fn.delay = _delay          # mimic Celery Task API enough for tests
+            fn.apply_async = _delay
+            return fn
+        # Allow both @shared_task and @shared_task(...)
+        if dargs and callable(dargs[0]) and not dkwargs:
+            return _decorate(dargs[0])
+        return _decorate
 
-
-# ---- Optional Celery shim (so .delay works in CI without celery) ----
-try:
-    from celery import shared_task  # real decorator if celery installed
-except Exception:
-    def shared_task(func=None, **_kwargs):
-        def decorator(f):
-            # mimic Celery's .delay by calling inline
-            f.delay = lambda *a, **k: f(*a, **k)
-            return f
-        return decorator(func) if func else decorator
-# --------------------------------------------------------------------
-
+# --- Django / app imports -----------------------------------------------------
 from django.conf import settings
-from django.core.mail import send_mail
-from django.urls import reverse
+from django.core.mail import get_connection
+from django.core.mail.message import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.utils import timezone
+
 from .models import Ticket
+from .emails import build_confirmation_message  # uses your templates
+
+
+# --- Helpers ------------------------------------------------------------------
+def _build_and_send(ticket: Ticket) -> dict:
+    """Build and send the ticket confirmation email (text + optional HTML)."""
+    ctx = {
+        "ticket": ticket,
+        "event": ticket.event,
+        "user": ticket.user,
+        "site_url": getattr(settings, "APP_BASE_URL", getattr(settings, "SITE_URL", "")),
+        "support_email": getattr(settings, "DEFAULT_FROM_EMAIL", ""),
+        "now": timezone.now(),
+    }
+
+    # Prefer your existing helper; fall back to manual EmailMultiAlternatives if it fails.
+    try:
+        msg = build_confirmation_message(
+            to_email=ticket.user.email,
+            ticket=ticket,
+            event=ticket.event,
+            user=ticket.user,
+            site_url=ctx["site_url"],
+            support_email=ctx["support_email"],
+        )
+        # EmailMessage/EmailMultiAlternatives compatible .send()
+        msg.send(fail_silently=True)
+    except Exception:
+        subject = f"Your ticket for {ticket.event.title}"
+        text_body = render_to_string("campusevents/email/claim_confirmation.txt", ctx)
+        html_body = None
+        try:
+            html_body = render_to_string("campusevents/email/claim_confirmation.html", ctx)
+        except Exception:
+            pass
+
+        connection = get_connection()
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=text_body,
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
+            to=[ticket.user.email],
+            connection=connection,
+        )
+        if html_body:
+            email.attach_alternative(html_body, "text/html")
+        email.send(fail_silently=True)
+
+    return {"ticket_id": ticket.id, "email_to": ticket.user.email}
+
+
+# --- Tasks --------------------------------------------------------------------
+@shared_task
+def send_ticket_confirmation_email(ticket_id: int) -> dict:
+    """Primary task your code calls: send confirmation for a Ticket by id."""
+    ticket = Ticket.objects.select_related("event", "user").get(id=ticket_id)
+    return _build_and_send(ticket)
 
 
 @shared_task
-def send_ticket_confirmation_email(ticket_id: int) -> None:
-    """Send a simple ticket confirmation email. Safe in CI and dev."""
-    try:
-        ticket = Ticket.objects.select_related("event", "user").get(id=ticket_id)
-    except Ticket.DoesNotExist:
-        return
-
-    base = getattr(settings, "APP_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
-
-    # Try to build a link to the ticket page; fall back to base site.
-    try:
-        detail_path = reverse("ticket_detail_page", args=[ticket.id])
-    except Exception:
-        detail_path = "/"
-
-    subject = f"Your ticket for {ticket.event.title}"
-    greeting_name = ticket.user.get_full_name() or ticket.user.username or "there"
-    body = (
-        f"Hi {greeting_name},\n\n"
-        f"Your ticket has been issued for:\n"
-        f"  • Event: {ticket.event.title}\n"
-        f"  • Ticket ID: {ticket.ticket_id}\n\n"
-        f"View your ticket: {base}{detail_path}\n\n"
-        f"-- Campus Events"
-    )
-
-    to_list = [ticket.user.email] if ticket.user.email else []
-    if not to_list:
-        return  # nothing to send to
-
-    send_mail(
-        subject,
-        body,
-        getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@example.com"),
-        to_list,
-        fail_silently=True,  # never crash tests/CI on email errors
-    )
+def send_confirmation_task(ticket_id: int) -> dict:
+    """
+    Back-compat task name expected by the CI tests.
+    We simply forward to send_ticket_confirmation_email so `.delay` works the same.
+    """
+    return send_ticket_confirmation_email(ticket_id)

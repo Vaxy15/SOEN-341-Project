@@ -8,25 +8,22 @@ from pathlib import Path
 import os
 from datetime import timedelta
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# ---- Optional dotenv (safe on CI if package isn't installed) ----
+# --- dotenv is optional in CI -------------------------------------------------
 try:
     from dotenv import load_dotenv  # type: ignore
-except Exception:
+except Exception:  # pragma: no cover
     def load_dotenv(*args, **kwargs):
-        return False  # no-op if package isn't installed
-load_dotenv()
-# -----------------------------------------------------------------
+        return False
 
-# --- Security / core flags ---
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key-for-development-only')
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
-ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',') if h.strip()]
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv()  # harmless if no .env
 
-# --- Application definition ---
+# --- Security / core flags ----------------------------------------------------
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-fallback-key-for-development-only")
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+
+# --- Apps ---------------------------------------------------------------------
 INSTALLED_APPS = [
     "campusevents.apps.CampuseventsConfig",
     "django_filters",
@@ -41,6 +38,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
 ]
 
+# --- Middleware ---------------------------------------------------------------
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
@@ -54,6 +52,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "campus.urls"
 
+# --- Templates ----------------------------------------------------------------
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -76,7 +75,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "campus.wsgi.application"
 
-# --- Database (SQLite for dev) ---
+# --- DB -----------------------------------------------------------------------
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -84,7 +83,7 @@ DATABASES = {
     }
 }
 
-# --- Password validation ---
+# --- Password validation ------------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -92,72 +91,58 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# --- Internationalization ---
+# --- I18N / TZ ----------------------------------------------------------------
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "America/Toronto"
 USE_I18N = True
 USE_TZ = True
 
-# --- Static & media files ---
+# --- Static / Media -----------------------------------------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# --- Default primary key field type ---
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-# Custom user model
 AUTH_USER_MODEL = "campusevents.User"
 
-# --- JWT Authentication Configuration ---
+# --- DRF / JWT ----------------------------------------------------------------
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': True,
-
-    'ALGORITHM': 'HS256',
-    'SIGNING_KEY': SECRET_KEY,
-    'VERIFYING_KEY': None,
-    'AUDIENCE': None,
-    'ISSUER': None,
-
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
-    'USER_ID_FIELD': 'id',
-    'USER_ID_CLAIM': 'user_id',
-    'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
-
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-    'TOKEN_TYPE_CLAIM': 'token_type',
-    'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
-
-    'JTI_CLAIM': 'jti',
-
-    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
-    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
-    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "TOKEN_TYPE_CLAIM": "token_type",
+    "TOKEN_USER_CLASS": "rest_framework_simplejwt.models.TokenUser",
+    "SLIDING_TOKEN_REFRESH_EXP_CLAIM": "refresh_exp",
+    "SLIDING_TOKEN_LIFETIME": timedelta(minutes=5),
+    "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
 }
 
-# --- DRF ---
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
     ],
-    'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer',
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
     ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
 }
 
-# --- CORS ---
+# --- CORS ---------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -166,49 +151,44 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = DEBUG
-
 CORS_ALLOWED_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
+    "accept", "accept-encoding", "authorization", "content-type",
+    "dnt", "origin", "user-agent", "x-csrftoken", "x-requested-with",
 ]
 
+# --- Auth redirects -----------------------------------------------------------
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "event_list_page"
 LOGOUT_REDIRECT_URL = "/"
 
-# ---- Site URL for absolute links in emails ----
+# --- Site / URLs in emails ----------------------------------------------------
 SITE_URL = os.getenv("SITE_URL", "http://127.0.0.1:8000")
 APP_BASE_URL = os.getenv("APP_BASE_URL", SITE_URL)
 
-# ---- Email backend ----
+# --- Email --------------------------------------------------------------------
 EMAIL_BACKEND = os.getenv(
     "EMAIL_BACKEND",
     "django.core.mail.backends.console.EmailBackend" if DEBUG
     else "django.core.mail.backends.smtp.EmailBackend",
 )
+
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() == "true"
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+
 DEFAULT_FROM_EMAIL = os.getenv(
     "DEFAULT_FROM_EMAIL",
     f"Campus Events <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "Campus Events <no-reply@example.com>",
 )
 
-# ---- Celery (inline for tests/CI) ----
+# --- Celery defaults (tests run eager) ----------------------------------------
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_BROKER_URL = "memory://"
 CELERY_RESULT_BACKEND = "cache+memory://"
 
-# --- Test-mode safety (used by pytest/CI) ---
+# Make CI/pytest hermetic: no broker, no SMTP, stable base URL
 import sys as _sys
 if "pytest" in _sys.modules or os.environ.get("DJANGO_TEST", "0") == "1":
     CELERY_TASK_ALWAYS_EAGER = True
