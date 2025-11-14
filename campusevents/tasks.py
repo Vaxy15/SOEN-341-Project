@@ -1,4 +1,23 @@
 from __future__ import annotations
+# --- Celery shim for CI (lets .delay() work even if celery isn't installed) ---
+try:
+    from celery import shared_task  # real celery when available
+except Exception:
+    class _EagerTaskWrapper:
+        def __init__(self, f):
+            self._f = f
+        def __call__(self, *a, **k):
+            return self._f(*a, **k)
+        def delay(self, *a, **k):
+            return self._f(*a, **k)
+        apply_async = delay
+    def shared_task(func=None, **kwargs):
+        if func is None:
+            def deco(f): return _EagerTaskWrapper(f)
+            return deco
+        return _EagerTaskWrapper(func)
+# -------------------------------------------------------------------------------
+
 
 # ---- Optional Celery shim (so .delay works in CI without celery) ----
 try:
