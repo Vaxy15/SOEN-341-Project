@@ -210,3 +210,10 @@ if "pytest" in sys.modules or os.environ.get("DJANGO_TEST", "0") == "1":
     CELERY_RESULT_BACKEND = "cache+memory://"
     EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
     APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://testserver")
+
+# --- Dev convenience: run Celery tasks inline when DEBUG is True ---
+if DEBUG:
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+    CELERY_BROKER_URL = "memory://"
+    CELERY_RESULT_BACKEND = "cache+memory://"
