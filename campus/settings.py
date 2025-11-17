@@ -8,23 +8,28 @@ from pathlib import Path
 import os
 from datetime import timedelta
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# --- dotenv is optional in CI -------------------------------------------------
+try:
+    from dotenv import load_dotenv  # type: ignore
+except Exception:  # pragma: no cover
+    def load_dotenv(*args, **kwargs):
+        return False
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv()  # harmless if no .env
 
-# --- Security / core flags ---
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key-for-development-only')
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+# --- Security / core flags ----------------------------------------------------
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-fallback-key-for-development-only")
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
-# --- Application definition ---
+# --- Apps ---------------------------------------------------------------------
 INSTALLED_APPS = [
-    "campusevents",          # your app
-    "django_filters",        # for event list/search filters
-    "rest_framework",        # Django REST Framework
-    "rest_framework_simplejwt",  # JWT authentication
-    "corsheaders",           # CORS handling
+    "campusevents.apps.CampuseventsConfig",
+    "django_filters",
+    "rest_framework",
+    "rest_framework_simplejwt",
+    "corsheaders",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -33,8 +38,9 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
 ]
 
+# --- Middleware ---------------------------------------------------------------
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",  # CORS middleware (should be first)
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -46,13 +52,13 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "campus.urls"
 
+# --- Templates ----------------------------------------------------------------
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        # Project-level templates folder (alongside manage.py)
         "DIRS": [
             BASE_DIR / "templates",
-            BASE_DIR / "campusevents" / "templates"
+            BASE_DIR / "campusevents" / "templates",
         ],
         "APP_DIRS": True,
         "OPTIONS": {
@@ -69,7 +75,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "campus.wsgi.application"
 
-# --- Database (SQLite for dev) ---
+# --- DB -----------------------------------------------------------------------
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -77,7 +83,7 @@ DATABASES = {
     }
 }
 
-# --- Password validation ---
+# --- Password validation ------------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -85,97 +91,109 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# --- Internationalization ---
+# --- I18N / TZ ----------------------------------------------------------------
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "America/Toronto"  # set to your local timezone
+TIME_ZONE = "America/Toronto"
 USE_I18N = True
 USE_TZ = True
 
-# --- Static & media files ---
+# --- Static / Media -----------------------------------------------------------
 STATIC_URL = "/static/"
-
-# Django will serve static files from each app's /static/<app_name>/ directory.
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# User-uploaded files (optional)
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# --- Default primary key field type ---
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-# Custom user model
 AUTH_USER_MODEL = "campusevents.User"
 
-# --- JWT Authentication Configuration ---
+# --- DRF / JWT ----------------------------------------------------------------
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # Access token expires in 1 hour
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # Refresh token expires in 7 days
-    'ROTATE_REFRESH_TOKENS': True,                   # Rotate refresh tokens on each use
-    'BLACKLIST_AFTER_ROTATION': True,                # Blacklist old refresh tokens
-    'UPDATE_LAST_LOGIN': True,                       # Update last login timestamp
-
-    'ALGORITHM': 'HS256',                            # JWT algorithm
-    'SIGNING_KEY': SECRET_KEY,                       # Use Django secret key
-    'VERIFYING_KEY': None,
-    'AUDIENCE': None,
-    'ISSUER': None,
-
-    'AUTH_HEADER_TYPES': ('Bearer',),                # Authorization header type
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',        # Authorization header name
-    'USER_ID_FIELD': 'id',
-    'USER_ID_CLAIM': 'user_id',
-    'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
-
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-    'TOKEN_TYPE_CLAIM': 'token_type',
-    'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
-
-    'JTI_CLAIM': 'jti',
-
-    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
-    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
-    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "TOKEN_TYPE_CLAIM": "token_type",
+    "TOKEN_USER_CLASS": "rest_framework_simplejwt.models.TokenUser",
+    "SLIDING_TOKEN_REFRESH_EXP_CLAIM": "refresh_exp",
+    "SLIDING_TOKEN_LIFETIME": timedelta(minutes=5),
+    "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
 }
 
-# --- Django REST Framework Configuration ---
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
     ],
-    'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer',
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
     ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
 }
 
-# --- CORS Configuration ---
+# --- CORS ---------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",    # React development server
-    "http://127.0.0.1:3000",   # React development server (alternative)
-    "http://localhost:8080",    # Vue.js development server
-    "http://127.0.0.1:8080",   # Vue.js development server (alternative)
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
 ]
-
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = DEBUG  # Only allow all origins in development
-
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOWED_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
+    "accept", "accept-encoding", "authorization", "content-type",
+    "dnt", "origin", "user-agent", "x-csrftoken", "x-requested-with",
 ]
 
+# --- Auth redirects -----------------------------------------------------------
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "event_list_page"
 LOGOUT_REDIRECT_URL = "/"
+
+# --- Site / URLs in emails ----------------------------------------------------
+SITE_URL = os.getenv("SITE_URL", "http://127.0.0.1:8000")
+APP_BASE_URL = os.getenv("APP_BASE_URL", SITE_URL)
+
+# --- Email --------------------------------------------------------------------
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend" if DEBUG
+    else "django.core.mail.backends.smtp.EmailBackend",
+)
+
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() == "true"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+
+DEFAULT_FROM_EMAIL = os.getenv(
+    "DEFAULT_FROM_EMAIL",
+    f"Campus Events <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "Campus Events <no-reply@example.com>",
+)
+
+# --- Celery defaults (tests run eager) ----------------------------------------
+CELERY_TASK_ALWAYS_EAGER = False
+CELERY_BROKER_URL = "memory://"
+CELERY_RESULT_BACKEND = "cache+memory://"
+
+# Make CI/pytest hermetic: no broker, no SMTP, stable base URL
+import sys as _sys
+if "pytest" in _sys.modules or os.environ.get("DJANGO_TEST", "0") == "1":
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+    CELERY_BROKER_URL = "memory://"
+    CELERY_RESULT_BACKEND = "cache+memory://"
+    EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+    APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://testserver")

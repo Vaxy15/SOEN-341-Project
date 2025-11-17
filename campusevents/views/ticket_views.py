@@ -8,11 +8,11 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from campusevents.tasks import send_ticket_confirmation_email
 
 from ..models import Event, Ticket
 from ..serializers import TicketSerializer, TicketIssueSerializer, TicketValidationSerializer
@@ -36,6 +36,7 @@ class TicketIssueView(APIView):
                 notes=serializer.validated_data.get("notes", ""),
                 expires_at=serializer.validated_data.get("expires_at"),
             )
+            send_ticket_confirmation_email.delay(ticket.id)
             return Response(TicketSerializer(ticket).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -101,6 +102,7 @@ class TicketDetailView(APIView):
         return Response({"message": "Ticket cancelled successfully"}, status=status.HTTP_200_OK)
 
 
+
 @login_required(login_url='login')
 @require_POST
 def claim_ticket(request, pk):
@@ -116,14 +118,14 @@ def claim_ticket(request, pk):
         messages.error(request, "This event is full.")
         return redirect(request.META.get("HTTP_REFERER", "event_list_page"))
 
-    # (Optional) don't allow claims after event ends
+    # (Optional) block after event ends
     if event.end_at and event.end_at <= timezone.now():
         messages.error(request, "This event has already ended.")
         return redirect(request.META.get("HTTP_REFERER", "event_list_page"))
 
-    # Create a ticket (defaults to status=ISSUED and generates QR)
-    Ticket.objects.create(event=event, user=request.user)
-
+    # Create ticket and queue email
+    ticket = Ticket.objects.create(event=event, user=request.user)
+    send_ticket_confirmation_email.delay(ticket.id)
     messages.success(request, "Ticket claimed successfully!")
     return redirect(request.META.get("HTTP_REFERER", "event_list_page"))
 

@@ -1,0 +1,11 @@
+Hi {{ user.first_name|default:user.email }},
+
+You're confirmed for "{{ event.title }}".
+
+When: {{ event.start_at|date:"M d, Y H:i" }} – {{ event.end_at|date:"H:i" }}
+Where: {{ event.location }}
+
+Ticket ID: {{ ticket.ticket_id }}
+{% if ticket.qr_code_url %}QR Image: {{ site_url }}{{ ticket.qr_code_url }}{% endif %}
+
+View your ticket: {{ site_url }}/events/confirmation/{{ event.id }}/

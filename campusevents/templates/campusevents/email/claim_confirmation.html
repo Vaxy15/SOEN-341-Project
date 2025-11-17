@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+  <body style="font-family:Arial,Helvetica,sans-serif; line-height:1.5;">
+    <h2 style="margin:0 0 12px;">Your ticket is confirmed! 🎟️</h2>
+    <p>Hi {{ user_name }},</p>
+
+    <p><strong>Event:</strong> {{ event_title }}<br/>
+       <strong>When:</strong> {{ event_dt }}<br/>
+       <strong>Where:</strong> {{ location }}<br/>
+       <strong>Ticket ID:</strong> {{ ticket_id }}{% if seat %}<br/>
+       <strong>Seat:</strong> {{ seat }}{% endif %}
+    </p>
+
+    <p><a href="{{ view_url }}">View your ticket & QR</a></p>
+
+    <hr/>
+    <p style="font-size:12px;color:#555;">
+      Need help? Contact {{ organizer }} {{ support_email }}.
+    </p>
+  </body>
+</html>

@@ -1,0 +1,73 @@
+{% load tz %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>View Ticket – {{ ticket.ticket_id }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#0b1220;color:#e6edf3}
+    .wrap{max-width:880px;margin:24px auto;padding:20px}
+    .card{background:#0f172a;border:1px solid #1f2a44;border-radius:16px;padding:20px}
+    .row{display:flex;gap:24px;flex-wrap:wrap}
+    .qr{max-width:260px}
+    img{max-width:100%;height:auto;border-radius:12px;background:#0b1220;border:1px solid #1f2a44}
+    .meta{flex:1;min-width:260px}
+    h1{margin:0 0 8px;font-size:28px}
+    h2{margin:0 0 12px;font-size:18px;color:#9fb3c8}
+    .pill{display:inline-block;padding:.2rem .6rem;border:1px solid #22406e;border-radius:999px;color:#9cc2ff;background:#0b1b33}
+    .btns{margin-top:16px;display:flex;gap:12px;flex-wrap:wrap}
+    a.btn{padding:.6rem .9rem;border-radius:10px;border:1px solid #274270;text-decoration:none;color:#cfe0ff;background:#0c1a31}
+    a.btn:hover{background:#0e2240}
+    .small{color:#9fb3c8;font-size:14px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>{{ event.title }}</h1>
+      <div class="small">
+        <div><strong>Location:</strong> {{ event.location|default:"TBA" }}</div>
+        <div>
+          <strong>When:</strong>
+          {% timezone "America/Toronto" %}
+            {{ event.start_at|date:"D, M j, Y • g:i a" }}
+            {% if event.end_at %} – {{ event.end_at|date:"D, M j, Y • g:i a" }}{% endif %}
+          {% endtimezone %}
+        </div>
+      </div>
+
+      <hr style="border:0;border-top:1px solid #1f2a44;margin:16px 0">
+
+      <div class="row">
+        <div class="qr">
+          {% if ticket.qr_code %}
+            <img src="{{ ticket.qr_code.url }}" alt="QR for {{ ticket.ticket_id }}">
+            <div class="btns">
+              <a class="btn" href="{{ ticket.qr_code.url }}" download>Download QR</a>
+              <a class="btn" href="javascript:window.print()">Print</a>
+            </div>
+          {% else %}
+            <p>No QR image available.</p>
+          {% endif %}
+        </div>
+
+        <div class="meta">
+          <h2>Your Ticket</h2>
+          <p><strong>ID:</strong> {{ ticket.ticket_id }}</p>
+          <p><strong>Owner:</strong> {{ ticket.user.get_full_name|default:ticket.user.username }} &lt;{{ ticket.user.email }}&gt;</p>
+          <p><strong>Status:</strong> <span class="pill">{{ ticket.get_status_display|default:ticket.status }}</span></p>
+          {% if ticket.seat_number %}<p><strong>Seat:</strong> {{ ticket.seat_number }}</p>{% endif %}
+          <p class="small">Issued: {% timezone "America/Toronto" %}{{ ticket.issued_at|date:"M j, Y • g:i a" }}{% endtimezone %}</p>
+          {% if ticket.expires_at %}<p class="small">Expires: {% timezone "America/Toronto" %}{{ ticket.expires_at|date:"M j, Y • g:i a" }}{% endtimezone %}</p>{% endif %}
+        </div>
+      </div>
+
+      <div class="btns" style="margin-top:24px">
+        <a class="btn" href="/">Home</a>
+        <a class="btn" href="/my-events/">My Tickets</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
