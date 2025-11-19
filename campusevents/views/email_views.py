@@ -14,6 +14,8 @@ from campusevents.email_tokens import read_email_token
 
 @login_required
 @require_POST
+@login_required
+@require_POST
 def resend_confirmation(request, pk: int):
     ticket = get_object_or_404(Ticket, pk=pk)
     if ticket.user_id != request.user.id:
@@ -54,7 +56,9 @@ def resend_confirmation(request, pk: int):
         send_key=send_key,
     )
 
-    transaction.on_commit(lambda: send_confirmation_task.delay(log.id))
+    # 👇 key change is here
+    transaction.on_commit(lambda: send_confirmation_task.delay(ticket.id))
+
     return JsonResponse({"ok": True})
 
 def view_ticket_signed(request):
