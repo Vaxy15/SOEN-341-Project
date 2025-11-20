@@ -12,12 +12,9 @@ sqlparse==0.5.3
 tzdata==2025.2
 celery[redis]==5.5.3
 redis==5.2.0
-
 pytest==9.0.1
 pytest-django==4.8.0
-
-celery==5.3.6
-
-celery==5.3.6
-
-celery==5.3.6
+numpy==2.3.5
+opencv-python-headless
+setuptools==80.9.0
+python-dotenv==1.0.1

@@ -183,13 +183,14 @@ DEFAULT_FROM_EMAIL = os.getenv(
     f"Campus Events <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "Campus Events <no-reply@example.com>",
 )
 
-# --- Celery defaults (tests run eager) ----------------------------------------
+# --- Celery defaults ---------------------------------------------------------
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_BROKER_URL = "memory://"
 CELERY_RESULT_BACKEND = "cache+memory://"
 
-# Make CI/pytest hermetic: no broker, no SMTP, stable base URL
 import sys as _sys
+
+# Test mode: pytest / CI
 if "pytest" in _sys.modules or os.environ.get("DJANGO_TEST", "0") == "1":
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True
@@ -197,3 +198,8 @@ if "pytest" in _sys.modules or os.environ.get("DJANGO_TEST", "0") == "1":
     CELERY_RESULT_BACKEND = "cache+memory://"
     EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
     APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://testserver")
+
+# Local development: run Celery tasks synchronously so email actually sends
+if DEBUG and os.environ.get("DJANGO_TEST", "0") != "1":
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
