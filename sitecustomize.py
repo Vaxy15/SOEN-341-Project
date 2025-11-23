@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 
 # Ensure Django settings are available before pytest-django scans.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "campus.settings")

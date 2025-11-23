@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ..models import User
-from ..serializers import (
+from ..api.serializers import (
     AdminUserSerializer,
     UserApprovalSerializer,
     UserRoleUpdateSerializer,

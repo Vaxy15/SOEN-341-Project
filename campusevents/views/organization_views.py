@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ..models import Organization
-from ..serializers import OrganizationSerializer
+from ..api.serializers import OrganizationSerializer
 
 
 class OrganizationListView(APIView):

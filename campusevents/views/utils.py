@@ -4,7 +4,6 @@ Shared utilities and helper functions for views.
 """
 
 from datetime import datetime
-import json
 
 import numpy as np
 import cv2

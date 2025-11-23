@@ -79,7 +79,7 @@ urlpatterns = [
     path("dashboard/events/<int:pk>/status/", views.AdminEventStatusView.as_view(), name="dashboard_event_status"),
     path("dashboard/pending-events/", views.AdminPendingEventsView.as_view(), name="dashboard_pending_events"),
     path("dashboard/events/dashboard/", views.admin_events_dashboard, name="dashboard_events_dashboard"),
-    
+
     # Event attendees CSV export
     path(
         "dashboard/events/<int:primary_key>/attendees/export/",

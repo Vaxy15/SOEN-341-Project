@@ -9,8 +9,8 @@ from django.contrib.admin.views.decorators import staff_member_required
 
 from campusevents.models import Ticket, EmailLog
 from campusevents.tasks import send_confirmation_task  # or your task name
-from campusevents.emails import build_confirmation_message, make_send_key
-from campusevents.email_tokens import read_email_token
+from campusevents.emails.emails import build_confirmation_message, make_send_key
+from campusevents.emails.tokens import read_email_token
 
 @login_required
 @require_POST
@@ -44,7 +44,7 @@ def resend_confirmation(request, pk: int):
     template_path = "campusevents/email/claim_confirmation.html"
     send_key = make_send_key(request.user.email, ticket.ticket_id, template_path)
 
-    log = EmailLog.objects.create(
+    EmailLog.objects.create(
         to=request.user.email,
         subject=f"Your ticket for {event.title}",
         template=template_path,

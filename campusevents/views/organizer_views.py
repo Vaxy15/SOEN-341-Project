@@ -108,10 +108,14 @@ def scan_ticket_image(request, pk):
     else:
         # Build a reason (best-effort)
         reason = []
-        if ticket.status == Ticket.CANCELLED: reason.append("cancelled")
-        if ticket.status == Ticket.EXPIRED:   reason.append("expired")
-        if ticket.event.status != Event.APPROVED: reason.append("event not approved")
-        if ticket.expires_at and ticket.expires_at <= timezone.now(): reason.append("expired")
+        if ticket.status == Ticket.CANCELLED:
+            reason.append("cancelled")
+        if ticket.status == Ticket.EXPIRED: 
+            reason.append("expired")
+        if ticket.event.status != Event.APPROVED:
+            reason.append("event not approved")
+        if ticket.expires_at and ticket.expires_at <= timezone.now():
+            reason.append("expired")
         messages.error(request, f"Ticket invalid ({', '.join(reason) or 'not valid'}).")
 
     return redirect('organizer_my_events')

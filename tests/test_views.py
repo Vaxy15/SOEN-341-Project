@@ -2,7 +2,19 @@
 # --- allow running this pytest file directly (VS Code "Run") ---
 import os
 import sys
+import django
+import datetime as dt
+import json
+# import pytest
+from django.utils import timezone
+from rest_framework.test import APIClient
+from rest_framework import status
+from django.urls import reverse
+
+from campusevents.models import User, Organization, Event, Ticket
+from django.test import Client as DjangoClient
 from pathlib import Path
+import pytest
 
 # Ensure the project root (folder that contains manage.py) is on sys.path
 
@@ -14,25 +26,12 @@ if str(PROJECT_ROOT) not in sys.path:
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "campus.settings")
 
 # # Initialize Django when running this file directly
-import django
 try:
     django.setup()
 except Exception:
     # When pytest-django runs, setup is already done; ignore double-setup
     pass
 # # ---------------------------------------------------------------
-
-import datetime as dt
-import json
-import pytest
-from django.utils import timezone
-from rest_framework.test import APIClient
-from rest_framework import status
-from django.urls import reverse
-
-from campusevents.models import User, Organization, Event, Ticket
-from django.test import Client as DjangoClient
-
 
 @pytest.fixture
 def api_client():

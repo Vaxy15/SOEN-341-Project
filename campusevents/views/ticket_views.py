@@ -15,7 +15,7 @@ from rest_framework.views import APIView
 from campusevents.tasks import send_ticket_confirmation_email
 
 from ..models import Event, Ticket
-from ..serializers import TicketSerializer, TicketIssueSerializer, TicketValidationSerializer
+from ..api.serializers import TicketSerializer, TicketIssueSerializer, TicketValidationSerializer
 
 
 class TicketIssueView(APIView):
