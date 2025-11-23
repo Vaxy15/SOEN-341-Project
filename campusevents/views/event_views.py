@@ -6,7 +6,6 @@ Event management and discovery views.
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
-from django.utils import timezone
 
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -14,7 +13,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ..models import Event, Organization, Ticket
-from ..serializers import EventSerializer, EventCreateSerializer
+from ..api.serializers import EventSerializer, EventCreateSerializer
 from .utils import build_event_discovery_qs, EventPagination
 
 

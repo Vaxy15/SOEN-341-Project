@@ -4,7 +4,6 @@ import campusevents.models
 import django.contrib.auth.validators
 import django.utils.timezone
 import django.db.models.deletion
-from django.conf import settings
 from django.db import migrations, models
 
 

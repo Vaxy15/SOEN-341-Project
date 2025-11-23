@@ -2,7 +2,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import User, Organization, Event, Ticket, EmailLog
-from .models import EmailLog
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
@@ -92,4 +91,3 @@ class EmailLogAdmin(admin.ModelAdmin):
     list_filter = ("status",)
     search_fields = ("to", "subject", "last_error", "message_id", "send_key")
     readonly_fields = ("created_at", "sent_at")
-

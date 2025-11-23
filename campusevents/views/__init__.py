@@ -96,7 +96,7 @@ __all__ = [
     'EventPagination',
     'build_event_discovery_qs',
     'decode_qr_from_uploaded',
-    
+
     # Authentication
     'CustomTokenObtainPairView',
     'UserRegistrationView',
@@ -104,13 +104,13 @@ __all__ = [
     'OrganizerRegistrationView',
     'register_view',
     'logout_view',
-    
+
     # User
     'UserProfileView',
-    
+
     # Organization
     'OrganizationListView',
-    
+
     # Events
     'home',
     'event_list_page',
@@ -120,7 +120,7 @@ __all__ = [
     'EventDiscoveryView',
     'EventDetailView',
     'OrganizerEventManagementView',
-    
+
     # Tickets
     'TicketIssueView',
     'TicketValidationView',
@@ -128,7 +128,7 @@ __all__ = [
     'TicketDetailView',
     'claim_ticket',
     'my_events',
-    
+
     # Admin User Management
     'AdminUserManagementView',
     'AdminUserDetailView',
@@ -137,7 +137,7 @@ __all__ = [
     'AdminUserStatusView',
     'AdminPendingOrganizersView',
     'admin_users_dashboard',
-    
+
     # Admin Event Management
     'AdminEventModerationView',
     'AdminEventDetailView',
@@ -145,19 +145,19 @@ __all__ = [
     'AdminEventStatusView',
     'AdminPendingEventsView',
     'admin_events_dashboard',
-    
+
     # Dashboard
     'AdminDashboardStatsView',
     'admin_dashboard_page',
-    
+
     # Calendar
     'calendar_page',
     'calendar_events_feed',
-    
+
     # Export
     'event_attendees_csv',
     'EventAttendeesCSVListView',
-    
+
     # Organizer
     'organizer_my_events',
     'scan_ticket_image',

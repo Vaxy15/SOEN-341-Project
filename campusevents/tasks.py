@@ -22,7 +22,6 @@ from django.conf import settings
 from django.core.mail import get_connection
 from django.core.mail.message import EmailMultiAlternatives
 from django.template.loader import render_to_string
-from django.utils import timezone
 
 from .models import Ticket
 
@@ -33,7 +32,7 @@ def _build_and_send(ticket: Ticket) -> dict:
 
     # Lazy import to avoid circular imports
     try:
-        from .emails import build_confirmation_message  # type: ignore
+        from .emails.emails import build_confirmation_message  # type: ignore
     except Exception:
         build_confirmation_message = None  # type: ignore[assignment]
 

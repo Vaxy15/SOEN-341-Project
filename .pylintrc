@@ -1,13 +1,53 @@
 [MASTER]
-# Ignore auto-generated Django migrations
 ignore = migrations
+load-plugins = pylint_django
+
+[django]
+settings-module = campus.settings
 
 [MESSAGES CONTROL]
-# Temporarily quiet common boilerplate warnings while bootstrapping
 disable =
+    # Docstring noise
     missing-module-docstring,
     missing-class-docstring,
-    missing-function-docstring
+    missing-function-docstring,
+
+    # Django ORM false positives
+    no-member,
+    no-name-in-module,
+
+    # Import-related noise
+    import-error,
+    wrong-import-order,
+    import-outside-toplevel,
+
+    # Serializer boilerplate
+    abstract-method,
+
+    # Code style noise
+    too-many-lines,
+    too-many-branches,
+    too-many-arguments,
+    too-many-locals,
+    too-many-public-methods,
+    too-many-instance-attributes,
+    too-few-public-methods,
+    duplicate-code,
+    line-too-long,
+    trailing-whitespace,
+    trailing-newlines,
+    unnecessary-pass,
+
+    # Exceptions (common in Django defensive code)
+    broad-exception-caught,
+    raise-missing-from,
+
+    # Unused args / variables (common in Django signals + request handlers)
+    unused-argument,
+    unused-variable,
+
+    # Other Django patterns
+    invalid-name
 
 [FORMAT]
 max-line-length = 200
